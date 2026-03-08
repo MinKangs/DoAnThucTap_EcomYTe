@@ -41,7 +41,28 @@ const User = {
             const values = [full_name, phone, address, id];
             const { rows } = await pool.query(query, values);
             return rows[0];
-        }
+        },
+
+        // Lấy danh sách tất cả người dùng (Dành cho Admin)
+    getAllUsers: async () => {
+        const query = 'SELECT id, full_name, email, phone, address, role, status, created_at FROM users ORDER BY created_at DESC';
+        const { rows } = await pool.query(query);
+        return rows;
+    },
+
+    // Cập nhật trạng thái hoặc quyền người dùng (Dành cho Admin)
+    updateUserStatusOrRole: async (id, data) => {
+        const { role, status } = data;
+        const query = `
+            UPDATE users
+            SET role = COALESCE($1, role),
+                status = COALESCE($2, status)
+            WHERE id = $3
+            RETURNING id, full_name, email, role, status;
+        `;
+        const { rows } = await pool.query(query, [role, status, id]);
+        return rows[0];
+    }
 
 };
 

@@ -37,6 +37,18 @@ const orderRoutes = require('./src/routes/orderRoutes');
 app.use('/api/orders', orderRoutes);
 // --------------------------------------
 
+// --- ĐĂNG KÝ ROUTE KHO HÀNG ---
+const inventoryRoutes = require('./src/routes/inventoryRoutes');
+app.use('/api/inventory', inventoryRoutes);
+
+// --- ĐĂNG KÝ ROUTE THỐNG KÊ BÁO CÁO ---
+const reportRoutes = require('./src/routes/reportRoutes');
+app.use('/api/reports', reportRoutes);
+
+// --- ĐĂNG KÝ ROUTE NHÀ PHÂN PHỐI ---
+const distributorRoutes = require('./src/routes/distributorRoutes');
+app.use('/api/distributors', distributorRoutes);
+
 // Thiết lập cổng và chạy máy chủ
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

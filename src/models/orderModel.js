@@ -45,6 +45,20 @@ const Order = {
         const { rows } = await pool.query(query, [orderId]);
         return rows;
     },
+
+    // Lấy tất cả đơn hàng trên hệ thống (Dành cho Admin)
+    getAllOrdersAdmin: async () => {
+        const query = 'SELECT * FROM orders ORDER BY created_at DESC';
+        const { rows } = await pool.query(query);
+        return rows;
+    },
+
+    // Cập nhật trạng thái đơn hàng (Dành cho Admin)
+    updateOrderStatus: async (orderId, status) => {
+        const query = 'UPDATE orders SET order_status = $1 WHERE id = $2 RETURNING *';
+        const { rows } = await pool.query(query, [status, orderId]);
+        return rows[0];
+    }
     
 };
 

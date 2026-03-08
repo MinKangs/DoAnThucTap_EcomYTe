@@ -93,6 +93,40 @@ const userController = {
             res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ.' });
         }
     },
+    
+    // Xem danh sách người dùng (Admin)
+    getAllUsersAdmin: async (req, res) => {
+        try {
+            const users = await User.getAllUsers();
+            res.status(200).json({ success: true, count: users.length, data: users });
+        } catch (error) {
+            console.error('Lỗi khi lấy danh sách người dùng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Cập nhật quyền hoặc khóa tài khoản (Admin)
+    updateUserAdmin: async (req, res) => {
+        try {
+            const targetUserId = parseInt(req.params.id);
+            
+            // Ngăn chặn Admin tự khóa tài khoản của chính mình (Nguồn: 184)
+            if (req.user.id === targetUserId && req.body.status === 'locked') {
+                return res.status(403).json({ success: false, message: 'Hệ thống từ chối thao tác: Không thể tự khóa tài khoản của chính mình.' });
+            }
+
+            const updatedUser = await User.updateUserStatusOrRole(targetUserId, req.body);
+            if (!updatedUser) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+            }
+
+            res.status(200).json({ success: true, message: 'Cập nhật tài khoản thành công', data: updatedUser });
+        } catch (error) {
+            console.error('Lỗi khi cập nhật tài khoản:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
+
 };
 
 module.exports = userController;

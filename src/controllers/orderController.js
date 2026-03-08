@@ -76,6 +76,38 @@ const orderController = {
             res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
         }
     },
+
+    // Xem tất cả đơn hàng (Admin)
+    getAllOrdersAdmin: async (req, res) => {
+        try {
+            const orders = await Order.getAllOrdersAdmin();
+            // Gắn chi tiết sản phẩm vào từng hóa đơn
+            for (let i = 0; i < orders.length; i++) {
+                orders[i].items = await Order.getOrderDetails(orders[i].id);
+            }
+            res.status(200).json({ success: true, count: orders.length, data: orders });
+        } catch (error) {
+            console.error('Lỗi khi lấy tất cả đơn hàng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Cập nhật trạng thái đơn hàng (Admin)
+    updateOrderStatusAdmin: async (req, res) => {
+        try {
+            const { status } = req.body;
+            // Các trạng thái hợp lệ: pending, confirmed, shipping, completed, cancelled
+            const updatedOrder = await Order.updateOrderStatus(req.params.id, status);
+            
+            if (!updatedOrder) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+            }
+            res.status(200).json({ success: true, message: 'Đã cập nhật trạng thái đơn hàng', data: updatedOrder });
+        } catch (error) {
+            console.error('Lỗi cập nhật trạng thái:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
     
 };
 
