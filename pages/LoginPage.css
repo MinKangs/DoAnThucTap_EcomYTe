@@ -1,0 +1,42 @@
+.login-wrapper {
+    padding: 3rem 0; /* Tạo khoảng cách vừa phải với Header và Footer */
+    background-color: #eaf4f4; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%; /* Phủ kín không gian trống mà Layout cấp cho */
+}   
+
+.login-card {
+    background: #ffffff;
+    padding: 3rem 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 105, 137, 0.15); /* Đổ bóng với sắc xanh */
+    border-top: 6px solid #008ebc; /* Đường viền xanh y tế ở cạnh trên */
+}
+
+.login-card h2 {
+    color: #004d66; /* Chữ tiêu đề màu xanh biển đậm */
+    font-weight: 700;
+}
+
+.login-card label {
+    color: #333333;
+    font-weight: 600;
+}
+
+/* Tùy chỉnh nút bấm theo màu y tế */
+.btn-medical {
+    background-color: #008ebc;
+    border-color: #008ebc;
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.btn-medical:hover {
+    background-color: #006b8f;
+    border-color: #006b8f;
+    color: white;
+}

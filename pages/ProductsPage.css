@@ -1,0 +1,27 @@
+.products-title {
+    color: #004d66;
+    font-weight: bold;
+}
+
+.product-img {
+    height: 200px;
+    object-fit: cover;
+}
+
+.product-price {
+    color: #dc3545;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.btn-add-cart {
+    background-color: #008ebc;
+    border-color: #008ebc;
+    color: white;
+}
+
+.btn-add-cart:hover {
+    background-color: #006b8f;
+    border-color: #006b8f;
+    color: white;
+}

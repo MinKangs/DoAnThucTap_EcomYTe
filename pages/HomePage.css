@@ -1,0 +1,23 @@
+.home-wrapper {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+}
+
+.home-title {
+    color: #004d66;
+    font-weight: bold;
+}
+
+.btn-home {
+    background-color: #008ebc;
+    border-color: #008ebc;
+    color: white;
+}
+
+.btn-home:hover {
+    background-color: #006b8f;
+    border-color: #006b8f;
+    color: white;
+}
