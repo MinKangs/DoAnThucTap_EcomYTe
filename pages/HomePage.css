@@ -1,23 +1,62 @@
-.home-wrapper {
-    min-height: 80vh;
-    display: flex;
-    align-items: center;
-    background-color: #f8f9fa;
+.category-sidebar {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-.home-title {
-    color: #004d66;
-    font-weight: bold;
+.category-item {
+    padding: 12px 20px;
+    color: #495057 !important; 
+    text-decoration: none !important; 
+    display: block;
+    transition: all 0.2s ease-in-out;
+    font-weight: 500;
+    border-radius: 6px;
+    margin: 0 8px 4px 8px;
 }
 
-.btn-home {
-    background-color: #008ebc;
-    border-color: #008ebc;
-    color: white;
+.category-item:hover {
+    background-color: #e8f5e9;
+    color: #00a651 !important; 
+    padding-left: 24px; 
 }
 
-.btn-home:hover {
-    background-color: #006b8f;
-    border-color: #006b8f;
-    color: white;
+.category-icon {
+    font-size: 1.2rem;
+    margin-right: 12px;
+}
+
+.promo-banner {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.promo-banner img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.promo-banner:hover img {
+    transform: scale(1.02);
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+}
+
+/* Ẩn thanh cuộn xấu xí của danh mục */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #e0e0e0;
+    border-radius: 4px;
 }
