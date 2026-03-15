@@ -49,6 +49,22 @@ app.use('/api/reports', reportRoutes);
 const distributorRoutes = require('./src/routes/distributorRoutes');
 app.use('/api/distributors', distributorRoutes);
 
+// Import route mới
+const warehouseRoutes = require('./src/routes/warehouseRoutes');
+app.use('/api/warehouses', warehouseRoutes);
+
+const locationRoutes = require('./src/routes/locationRoutes');
+app.use('/api/locations', locationRoutes);
+
+const shippingRoutes = require('./src/routes/shippingRoutes');
+app.use('/api/shipping-partners', shippingRoutes);
+
+const categoryRoutes = require('./src/routes/categoryRoutes');
+app.use('/api/categories', categoryRoutes);
+
+const dashboardRoutes = require('./src/routes/dashboardRoutes');
+app.use('/api/dashboard', dashboardRoutes);
+
 // Thiết lập cổng và chạy máy chủ
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

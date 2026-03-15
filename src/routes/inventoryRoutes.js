@@ -6,5 +6,7 @@ const { protect, authorizeAdmin } = require('../config/authMiddleware');
 // Chỉ Admin/Staff đã đăng nhập mới được truy cập các Route này
 router.get('/', protect, authorizeAdmin, inventoryController.getInventory);
 router.post('/import', protect, authorizeAdmin, inventoryController.importBatch);
+router.put('/:id', protect, authorizeAdmin, inventoryController.updateBatch);
+router.delete('/:id', protect, authorizeAdmin, inventoryController.deleteBatch);
 
 module.exports = router;

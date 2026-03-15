@@ -49,7 +49,25 @@ const productController = {
             console.error('Lỗi khi xóa sản phẩm:', error);
             res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
         }
+    },
+
+    getProductById: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const product = await Product.getProductById(id);
+            
+            if (!product) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
+            }
+            
+            res.json({ success: true, data: product });
+        } catch (error) {
+            console.error('Lỗi khi lấy chi tiết sản phẩm:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+        }
     }
 };
+
+
 
 module.exports = productController;
