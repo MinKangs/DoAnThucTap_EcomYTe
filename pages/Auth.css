@@ -1,0 +1,62 @@
+/* Bao bọc toàn trang, thiết lập nền màu xám nhạt để làm nổi bật form trắng */
+.auth-wrapper {
+    background-color: #f4f7f6;
+    min-height: calc(100vh - 80px); /* Trừ đi chiều cao của Header */
+    display: flex;
+    align-items: center;
+}
+
+/* Định dạng thẻ Card chứa form */
+.auth-card {
+    border: 1px solid #e0e6e3;
+    border-radius: 12px !important; /* Bo góc mềm mại */
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04) !important; /* Đổ bóng nhẹ */
+}
+
+/* Tiêu đề form */
+.auth-card h3 {
+    color: var(--primary-green, #198754);
+    letter-spacing: 0.5px;
+}
+
+/* Hiệu ứng khi focus vào ô nhập liệu */
+.auth-card .form-control:focus {
+    border-color: var(--primary-green, #198754);
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.15);
+    border-left-color: transparent; /* Giấu viền trái để nối liền với icon */
+}
+
+/* Định dạng phần viền của Icon bên trái ô input */
+.auth-card .input-group-text.auth-icon {
+    border-right-color: transparent; /* Giấu viền phải để nối liền với input */
+    color: #6c757d;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Đổi màu viền của Icon khi thẻ input bên cạnh được focus */
+.auth-card .input-group:focus-within .auth-icon {
+    border-color: var(--primary-green, #198754);
+    color: var(--primary-green, #198754);
+}
+
+/* Loại bỏ viền trái của input mặc định trong InputGroup */
+.auth-card .input-group .form-control {
+    border-left-color: transparent;
+}
+
+/* Nút bấm Submit */
+.auth-card button[type="submit"] {
+    transition: all 0.3s ease;
+}
+
+.auth-card button[type="submit"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);
+}
+
+/* Text label của Form */
+.auth-card .form-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #333;
+}

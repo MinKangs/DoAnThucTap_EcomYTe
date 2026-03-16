@@ -1,88 +1,108 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Alert, Spinner, InputGroup } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import { BsEnvelope, BsLock } from 'react-icons/bs';
 import api from '../services/api';
-import './LoginPage.css';
+import { useAuth } from '../context/AuthContext';
+import './Auth.css'; // Sử dụng chung file CSS
 
 const LoginPage = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    
     const navigate = useNavigate();
+    const { login } = useAuth();
 
-    const handleLogin = async (e) => {
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsLoading(true);
         setError('');
 
         try {
-            const response = await api.post('/users/login', { email, password });
-            
-            if (response.data.success) {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+            const response = await api.post('/auth/login', formData);
 
-                const userRole = response.data.user.role;
-                if (userRole === 'admin' || userRole === 'staff') {
+            if (response.data.success) {
+                login(response.data.user, response.data.token);
+                
+                if (response.data.user.role === 'admin') {
                     navigate('/admin');
                 } else {
                     navigate('/');
                 }
             }
         } catch (err) {
-            if (err.response && err.response.data) {
-                setError(err.response.data.message);
-            } else {
-                setError('Đã xảy ra lỗi khi kết nối đến máy chủ.');
-            }
+            setError(err.response?.data?.message || 'Có lỗi xảy ra khi đăng nhập.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <div className="login-wrapper">
+        <div className="auth-wrapper py-5">
             <Container>
                 <Row className="justify-content-center">
                     <Col xs={12} sm={10} md={8} lg={5}>
-                        <div className="login-card">
-                            <h2 className="text-center mb-4">Hệ Thống Y Tế</h2>
+                        <div className="auth-card shadow p-4 bg-white rounded">
+                            <h3 className="text-center mb-4 fw-bold">Đăng Nhập</h3>
                             
                             {error && <Alert variant="danger">{error}</Alert>}
-                            
-                            <Form onSubmit={handleLogin}>
-                                <Form.Group className="mb-3" controlId="formBasicEmail">
+
+                            <Form onSubmit={handleSubmit}>
+                                <Form.Group className="mb-3">
                                     <Form.Label>Tài khoản Email</Form.Label>
-                                    <Form.Control 
-                                        type="email" 
-                                        placeholder="Nhập địa chỉ email" 
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                    />
+                                    <InputGroup>
+                                        <InputGroup.Text className="bg-light auth-icon">
+                                            <BsEnvelope />
+                                        </InputGroup.Text>
+                                        <Form.Control 
+                                            type="email" 
+                                            name="email"
+                                            placeholder="Nhập email của bạn" 
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            required 
+                                        />
+                                    </InputGroup>
                                 </Form.Group>
 
-                                <Form.Group className="mb-4" controlId="formBasicPassword">
-                                    <div className="d-flex justify-content-between">
-                                        <Form.Label>Mật khẩu</Form.Label>
-                                        <Link to="/forgot-password" style={{ textDecoration: 'none', fontSize: '0.9rem', color: '#008ebc' }}>
-                                            Quên mật khẩu?
-                                        </Link>
-                                    </div>
-                                    <Form.Control 
-                                        type="password" 
-                                        placeholder="Nhập mật khẩu" 
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        required
-                                    />
+                                <Form.Group className="mb-4">
+                                    <Form.Label>Mật khẩu</Form.Label>
+                                    <InputGroup>
+                                        <InputGroup.Text className="bg-light auth-icon">
+                                            <BsLock />
+                                        </InputGroup.Text>
+                                        <Form.Control 
+                                            type="password" 
+                                            name="password"
+                                            placeholder="Nhập mật khẩu" 
+                                            value={formData.password}
+                                            onChange={handleChange}
+                                            required 
+                                        />
+                                    </InputGroup>
                                 </Form.Group>
 
-                                <Button type="submit" className="btn-medical w-100 mb-3">
-                                    Đăng nhập hệ thống
+                                <Button 
+                                    variant="success" 
+                                    type="submit" 
+                                    className="w-100 fw-bold py-2 mb-3" 
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? <Spinner animation="border" size="sm" /> : 'Đăng Nhập'}
                                 </Button>
-
-                                <div className="text-center mt-3" style={{ fontSize: '0.9rem' }}>
-                                    Chưa có tài khoản? <Link to="/register" style={{ textDecoration: 'none', color: '#008ebc', fontWeight: 'bold' }}>Đăng ký ngay</Link>
-                                </div>
                             </Form>
+                            
+                            <div className="text-center mt-3" style={{ fontSize: '0.9rem' }}>
+                                <span>Chưa có tài khoản? </span>
+                                <Link to="/register" className="text-success fw-bold text-decoration-none">
+                                    Đăng ký ngay
+                                </Link>
+                            </div>
                         </div>
                     </Col>
                 </Row>
