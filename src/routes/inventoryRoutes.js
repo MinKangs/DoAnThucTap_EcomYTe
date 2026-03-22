@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const inventoryController = require('../controllers/inventoryController');
-const { protect, authorizeAdmin } = require('../config/authMiddleware');
+const { verifyToken, isStaffOrAdmin } = require('../middlewares/authMiddleware');
 
 // Chỉ Admin/Staff đã đăng nhập mới được truy cập các Route này
-router.get('/', protect, authorizeAdmin, inventoryController.getInventory);
-router.post('/import', protect, authorizeAdmin, inventoryController.importBatch);
-router.put('/:id', protect, authorizeAdmin, inventoryController.updateBatch);
-router.delete('/:id', protect, authorizeAdmin, inventoryController.deleteBatch);
+router.get('/', verifyToken, isStaffOrAdmin, inventoryController.getInventory);
+router.post('/import', verifyToken, isStaffOrAdmin, inventoryController.importBatch);
+router.put('/:id', verifyToken, isStaffOrAdmin, inventoryController.updateBatch);
+router.delete('/:id', verifyToken, isStaffOrAdmin, inventoryController.deleteBatch);
 
 module.exports = router;

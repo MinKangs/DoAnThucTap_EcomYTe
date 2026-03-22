@@ -1,30 +1,47 @@
 const pool = require('../config/db');
 
 const Order = {
-    // Tạo bản ghi đơn hàng mới
-    createOrder: async (userId, totalAmount, paymentMethod, shippingAddress) => {
-        const query = `
-            INSERT INTO orders (user_id, total_amount, payment_method, shipping_address)
-            VALUES ($1, $2, $3, $4) RETURNING *;
-        `;
-        const values = [userId, totalAmount, paymentMethod, shippingAddress];
-        const { rows } = await pool.query(query, values);
-        return rows[0];
-    },
+    // Tạo bản ghi đơn hàng mới và chi tiết sản phẩm (Transaction)
+    createOrder: async (orderData, items) => {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            // 1. Thêm thông tin vào bảng orders
+            const orderQuery = `
+                INSERT INTO orders (user_id, full_name, phone, shipping_address, notes, payment_method, total_amount, status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+                RETURNING id;
+            `;
+            const orderValues = [
+                orderData.user_id || null, // Nếu có user_id thì lưu, không thì lưu null (khách vãng lai)
+                orderData.full_name, 
+                orderData.phone, 
+                orderData.shipping_address, 
+                orderData.notes || null, 
+                orderData.payment_method, 
+                orderData.total_amount
+            ];
+            const orderResult = await client.query(orderQuery, orderValues);
+            const orderId = orderResult.rows[0].id;
 
-    // Lưu chi tiết từng sản phẩm trong đơn hàng
-    addOrderItem: async (orderId, productId, quantity, priceAtPurchase) => {
-        const query = `
-            INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase)
-            VALUES ($1, $2, $3, $4);
-        `;
-        await pool.query(query, [orderId, productId, quantity, priceAtPurchase]);
-    },
+            // 2. Thêm từng sản phẩm vào bảng order_items
+            const itemQuery = `
+                INSERT INTO order_items (order_id, product_id, quantity, price, price_at_purchase)
+                VALUES ($1, $2, $3, $4, $4);
+            `;
+            for (let item of items) {
+                await client.query(itemQuery, [orderId, item.product_id, item.quantity, item.price]);
+            }
 
-    // Xóa toàn bộ sản phẩm trong giỏ sau khi đặt hàng thành công
-    clearCart: async (cartId) => {
-        const query = 'DELETE FROM cart_items WHERE cart_id = $1';
-        await pool.query(query, [cartId]);
+            await client.query('COMMIT');
+            return orderId;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
     },
 
     // Lấy danh sách đơn hàng của một người dùng cụ thể
@@ -54,12 +71,16 @@ const Order = {
     },
 
     // Cập nhật trạng thái đơn hàng (Dành cho Admin)
-    updateOrderStatus: async (orderId, status) => {
-        const query = 'UPDATE orders SET order_status = $1 WHERE id = $2 RETURNING *';
-        const { rows } = await pool.query(query, [status, orderId]);
-        return rows[0];
+    updateOrderStatus: async (id, status) => {
+        const query = `
+            UPDATE orders 
+            SET status = $1 
+            WHERE id = $2 
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [status, id]);
+        return result.rows[0];
     }
-    
 };
 
 module.exports = Order;

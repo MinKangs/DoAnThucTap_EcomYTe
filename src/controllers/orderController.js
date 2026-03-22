@@ -1,71 +1,50 @@
 const Order = require('../models/orderModel');
-const Cart = require('../models/cartModel');
+// Không cần require Cart Model ở đây nữa vì Frontend gửi trực tiếp mảng items
 
 const orderController = {
+    // Xử lý Khách hàng đặt hàng (Guest Checkout / LocalStorage)
     placeOrder: async (req, res) => {
         try {
-            const { payment_method, shipping_address } = req.body;
-            const userId = req.user.id;
+            // Thêm user_id vào danh sách nhận từ req.body
+            const { user_id, full_name, phone, shipping_address, notes, payment_method, total_amount, items } = req.body;
 
-            // Kiểm tra đầu vào bắt buộc
-            if (!payment_method || !shipping_address) {
-                return res.status(400).json({ success: false, message: 'Vui lòng cung cấp phương thức thanh toán và địa chỉ giao hàng.' });
+            if (!full_name || !phone || !shipping_address || !payment_method) {
+                return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin giao hàng.' });
             }
 
-            // 1. Lấy thông tin giỏ hàng của người dùng
-            const cart = await Cart.getCartByUserId(userId);
-            if (!cart) {
-                return res.status(400).json({ success: false, message: 'Giỏ hàng không tồn tại.' });
-            }
-
-            const items = await Cart.getCartItems(cart.id);
-            if (items.length === 0) {
+            if (!items || items.length === 0) {
                 return res.status(400).json({ success: false, message: 'Giỏ hàng đang trống, không thể đặt hàng.' });
             }
 
-            // 2. Tính toán tổng tiền
-            const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
-
-            // 3. Khởi tạo đơn hàng vào CSDL
-            const newOrder = await Order.createOrder(userId, totalAmount, payment_method, shipping_address);
-
-            // 4. Chuyển sản phẩm từ giỏ sang chi tiết đơn hàng
-            for (let item of items) {
-                await Order.addOrderItem(newOrder.id, item.product_id, item.quantity, item.price);
-            }
-
-            // 5. Làm sạch giỏ hàng
-            await Order.clearCart(cart.id);
+            // Đưa user_id vào orderData
+            const orderData = { user_id, full_name, phone, shipping_address, notes, payment_method, total_amount };
+            
+            const newOrderId = await Order.createOrder(orderData, items);
 
             res.status(201).json({ 
                 success: true, 
                 message: 'Đặt hàng thành công.', 
-                data: {
-                    order_id: newOrder.id,
-                    total_amount: totalAmount,
-                    payment_method: newOrder.payment_method,
-                    status: newOrder.order_status
-                }
+                data: { order_id: newOrderId }
             });
         } catch (error) {
             console.error('Lỗi khi đặt hàng:', error);
-            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi xử lý đơn hàng' });
         }
     },
 
-    // Xem lịch sử đơn hàng
+    // Xem lịch sử đơn hàng (Yêu cầu đăng nhập)
     getMyOrders: async (req, res) => {
         try {
-            const userId = req.user.id;
+            // Phần này giữ nguyên, sau này làm tính năng Auth sẽ dùng đến
+            const userId = req.user?.id; 
+            if(!userId) return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập.' });
             
-            // Lấy danh sách các hóa đơn
             const orders = await Order.getMyOrders(userId);
 
             if (orders.length === 0) {
                 return res.status(200).json({ success: true, message: 'Bạn chưa có đơn hàng nào.', data: [] });
             }
 
-            // Gắn chi tiết sản phẩm vào từng hóa đơn
             for (let i = 0; i < orders.length; i++) {
                 orders[i].items = await Order.getOrderDetails(orders[i].id);
             }
@@ -81,7 +60,6 @@ const orderController = {
     getAllOrdersAdmin: async (req, res) => {
         try {
             const orders = await Order.getAllOrdersAdmin();
-            // Gắn chi tiết sản phẩm vào từng hóa đơn
             for (let i = 0; i < orders.length; i++) {
                 orders[i].items = await Order.getOrderDetails(orders[i].id);
             }
@@ -96,7 +74,7 @@ const orderController = {
     updateOrderStatusAdmin: async (req, res) => {
         try {
             const { status } = req.body;
-            // Các trạng thái hợp lệ: pending, confirmed, shipping, completed, cancelled
+            // Gọi hàm updateOrderStatus từ Model
             const updatedOrder = await Order.updateOrderStatus(req.params.id, status);
             
             if (!updatedOrder) {
@@ -108,7 +86,6 @@ const orderController = {
             res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
         }
     }
-    
 };
 
 module.exports = orderController;

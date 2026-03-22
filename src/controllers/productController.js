@@ -11,20 +11,34 @@ const productController = {
         }
     },
 
-    createProduct: async (req, res) => {
+createProduct: async (req, res) => {
         try {
             // Yêu cầu nhập ít nhất tên và giá
             if (!req.body.name || !req.body.price) {
                 return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc (name, price)' });
             }
-            const newProduct = await Product.createProduct(req.body);
+
+            // Xử lý hình ảnh: Ưu tiên file tải lên, nếu không có thì lấy link URL (nếu Frontend vẫn gửi), hoặc để null
+            let imageUrl = req.body.image || null; 
+            if (req.file) {
+                imageUrl = `/uploads/${req.file.filename}`;
+            }
+
+            // Gộp dữ liệu text từ form và đường dẫn ảnh mới
+            const productData = {
+                ...req.body,
+                image: imageUrl
+            };
+
+            // Truyền productData (đã có chứa ảnh) vào Model như cũ
+            const newProduct = await Product.createProduct(productData);
             res.status(201).json({ success: true, data: newProduct });
         } catch (error) {
             console.error('Lỗi khi thêm sản phẩm:', error);
             res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
         }
     },
-
+    
     updateProduct: async (req, res) => {
         try {
             const updatedProduct = await Product.updateProduct(req.params.id, req.body);

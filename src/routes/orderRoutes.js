@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
-const { protect, authorizeAdmin } = require('../config/authMiddleware');
+const { verifyToken, isStaffOrAdmin } = require('../middlewares/authMiddleware');
 
-// Route thực hiện đặt hàng
-router.post('/', protect, orderController.placeOrder);
-// Route xem lịch sử mua hàng
-router.get('/me', protect, orderController.getMyOrders);
+// --- ROUTE DÀNH CHO KHÁCH HÀNG ---
+// Thực hiện đặt hàng (Khách vãng lai có thể đặt)
+router.post('/', orderController.placeOrder);
 
-// --- ROUTE DÀNH CHO ADMIN ---
-// Xem toàn bộ đơn hàng của hệ thống
-router.get('/admin', protect, authorizeAdmin, orderController.getAllOrdersAdmin);
-// Cập nhật trạng thái đơn hàng (pending, shipping, completed...)
-router.put('/admin/:id/status', protect, authorizeAdmin, orderController.updateOrderStatusAdmin);
+// Xem lịch sử mua hàng (Chỉ dành cho tài khoản đã đăng nhập)
+router.get('/me', verifyToken, orderController.getMyOrders);
+
+// --- ROUTE DÀNH CHO ADMIN & NHÂN VIÊN ---
+// Xem toàn bộ đơn hàng của hệ thống và Cập nhật trạng thái
+router.get('/admin', verifyToken, isStaffOrAdmin, orderController.getAllOrdersAdmin);
+router.put('/admin/:id/status', verifyToken, isStaffOrAdmin, orderController.updateOrderStatusAdmin);
 
 module.exports = router;

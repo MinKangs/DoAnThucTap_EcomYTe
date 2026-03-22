@@ -17,6 +17,11 @@ app.get('/', (req, res) => {
     res.json({ message: 'Hệ thống Backend đang hoạt động tốt.' });
 });
 
+
+//Bảo Mật
+const authRoutes = require('./src/routes/authRoutes');
+app.use('/api/auth', authRoutes);
+
 // --- ĐĂNG KÝ ROUTE SẢN PHẨM ---
 const productRoutes = require('./src/routes/productRoutes');
 app.use('/api/products', productRoutes);
@@ -56,14 +61,15 @@ app.use('/api/warehouses', warehouseRoutes);
 const locationRoutes = require('./src/routes/locationRoutes');
 app.use('/api/locations', locationRoutes);
 
-const shippingRoutes = require('./src/routes/shippingRoutes');
-app.use('/api/shipping-partners', shippingRoutes);
-
 const categoryRoutes = require('./src/routes/categoryRoutes');
 app.use('/api/categories', categoryRoutes);
 
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 app.use('/api/dashboard', dashboardRoutes);
+
+const path = require('path');
+// Cho phép truy cập tĩnh vào thư mục uploads qua đường dẫn /uploads
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // Thiết lập cổng và chạy máy chủ
 const PORT = process.env.PORT || 5000;

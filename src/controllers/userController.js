@@ -1,75 +1,11 @@
 const User = require('../models/userModel');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt'); // Cần thiết để Admin mã hóa mật khẩu khi tạo/sửa User
 
 const userController = {
-    // Xử lý Use Case Đăng ký
-    register: async (req, res) => {
-        try {
-            const { full_name, email, password, phone } = req.body;
-
-            // Kiểm tra email đã tồn tại chưa
-            const existingUser = await User.findByEmail(email);
-            if (existingUser) {
-                return res.status(400).json({ success: false, message: 'Email này đã được sử dụng.' });
-            }
-
-            // Mã hóa mật khẩu
-            const salt = await bcrypt.genSalt(10);
-            const password_hash = await bcrypt.hash(password, salt);
-
-            // Lưu vào CSDL
-            const newUser = await User.createUser({ full_name, email, password_hash, phone });
-
-            res.status(201).json({ success: true, message: 'Đăng ký thành công', data: newUser });
-        } catch (error) {
-            console.error('Lỗi đăng ký:', error);
-            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
-        }
-    },
-
-    // Xử lý Use Case Đăng nhập
-    login: async (req, res) => {
-        try {
-            const { email, password } = req.body;
-
-            // Tìm người dùng
-            const user = await User.findByEmail(email);
-            if (!user) {
-                return res.status(401).json({ success: false, message: 'Email hoặc mật khẩu không chính xác.' });
-            }
-
-            // Kiểm tra trạng thái tài khoản (Nguồn: 133)
-            if (user.status === 'locked') {
-                return res.status(403).json({ success: false, message: 'Tài khoản của bạn đã bị khóa.' });
-            }
-
-            // So sánh mật khẩu
-            const isMatch = await bcrypt.compare(password, user.password_hash);
-            if (!isMatch) {
-                return res.status(401).json({ success: false, message: 'Email hoặc mật khẩu không chính xác.' });
-            }
-
-            // Tạo mã Token JWT
-            const token = jwt.sign(
-                { id: user.id, role: user.role },
-                process.env.JWT_SECRET,
-                { expiresIn: '1d' } // Token có hạn 1 ngày
-            );
-
-            res.status(200).json({
-                success: true,
-                message: 'Đăng nhập thành công',
-                token: token,
-                user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role }
-            });
-        } catch (error) {
-            console.error('Lỗi đăng nhập:', error);
-            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
-        }
-    },
-
-    // Lấy thông tin cá nhân
+    // ==========================================
+    // DÀNH CHO KHÁCH HÀNG (USER THƯỜNG)
+    // ==========================================
+    
     getProfile: async (req, res) => {
         try {
             const user = await User.findById(req.user.id);
@@ -83,7 +19,6 @@ const userController = {
         }
     },
 
-    // Cập nhật thông tin cá nhân
     updateProfile: async (req, res) => {
         try {
             const updatedUser = await User.updateProfile(req.user.id, req.body);
@@ -93,9 +28,13 @@ const userController = {
             res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ.' });
         }
     },
-    
-    // Xem danh sách người dùng (Admin)
-    getAllUsersAdmin: async (req, res) => {
+
+    // ==========================================
+    // DÀNH CHO QUẢN TRỊ VIÊN (ADMIN)
+    // ==========================================
+
+    // Lấy danh sách (GET /api/users)
+    getAllUsers: async (req, res) => {
         try {
             const users = await User.getAllUsers();
             res.status(200).json({ success: true, count: users.length, data: users });
@@ -105,17 +44,53 @@ const userController = {
         }
     },
 
-    // Cập nhật quyền hoặc khóa tài khoản (Admin)
-    updateUserAdmin: async (req, res) => {
+    // Tạo người dùng mới (POST /api/users)
+    createUser: async (req, res) => {
+        try {
+            const { full_name, email, phone, password, role, status } = req.body;
+            
+            // Mã hóa mật khẩu do Admin cấp
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            const userData = {
+                full_name,
+                email,
+                phone,
+                password: hashedPassword,
+                role: role || 'user',
+                status: status || 'active'
+            };
+
+            // Lưu ý: Cần đảm bảo model User có hàm createUser tương ứng
+            const newUser = await User.createUser(userData);
+            res.status(201).json({ success: true, message: 'Tạo tài khoản thành công', data: newUser });
+        } catch (error) {
+            console.error('Lỗi khi tạo tài khoản:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Cập nhật người dùng (PUT /api/users/:id)
+    updateUser: async (req, res) => {
         try {
             const targetUserId = parseInt(req.params.id);
+            const updateData = { ...req.body };
             
-            // Ngăn chặn Admin tự khóa tài khoản của chính mình (Nguồn: 184)
-            if (req.user.id === targetUserId && req.body.status === 'locked') {
+            // Chặn Admin tự khóa tài khoản của chính mình (đã sửa 'locked' thành 'inactive' theo frontend)
+            if (req.user.id === targetUserId && updateData.status === 'inactive') {
                 return res.status(403).json({ success: false, message: 'Hệ thống từ chối thao tác: Không thể tự khóa tài khoản của chính mình.' });
             }
 
-            const updatedUser = await User.updateUserStatusOrRole(targetUserId, req.body);
+            // Nếu Admin có nhập mật khẩu mới, tiến hành mã hóa trước khi lưu
+            if (updateData.password) {
+                const salt = await bcrypt.genSalt(10);
+                updateData.password = await bcrypt.hash(updateData.password, salt);
+            }
+
+            // Lưu ý: Cần đảm bảo model User có hàm updateUser xử lý được các trường này
+            const updatedUser = await User.updateUser(targetUserId, updateData);
+            
             if (!updatedUser) {
                 return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
             }
@@ -125,8 +100,27 @@ const userController = {
             console.error('Lỗi khi cập nhật tài khoản:', error);
             res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
         }
-    }
+    },
 
+    // Xóa/Khóa người dùng (DELETE /api/users/:id)
+    deleteUser: async (req, res) => {
+        try {
+            const targetUserId = parseInt(req.params.id);
+
+            // Chặn Admin tự xóa chính mình
+            if (req.user.id === targetUserId) {
+                return res.status(403).json({ success: false, message: 'Hệ thống từ chối thao tác: Không thể tự xóa tài khoản của chính mình.' });
+            }
+
+            // Lưu ý: Cần đảm bảo model User có hàm deleteUser
+            await User.deleteUser(targetUserId);
+            
+            res.status(200).json({ success: true, message: 'Thao tác trên tài khoản thành công' });
+        } catch (error) {
+            console.error('Lỗi khi xóa tài khoản:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
 };
 
 module.exports = userController;

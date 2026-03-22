@@ -3,13 +3,26 @@ const pool = require('../config/db');
 const dashboardController = {
     getSummary: async (req, res) => {
         try {
-            // Chạy đồng thời nhiều câu lệnh đếm để tối ưu tốc độ
-            const [products, categories, distributors, orders, inventory] = await Promise.all([
+            const expiringQuery = `
+                SELECT COUNT(*) 
+                FROM inventory_batches 
+                WHERE expiration_date <= CURRENT_DATE + INTERVAL '30 days'
+            `;
+
+            const pendingOrderQuery = `
+                SELECT COUNT(*) 
+                FROM orders 
+                WHERE status = 'pending'
+            `;
+
+            const [products, categories, users, orders, inventory, expiring, pendingOrders] = await Promise.all([
                 pool.query('SELECT COUNT(*) FROM products'),
                 pool.query('SELECT COUNT(*) FROM categories'),
-                pool.query('SELECT COUNT(*) FROM distributors'),
+                pool.query('SELECT COUNT(*) FROM users'),
                 pool.query('SELECT COUNT(*) FROM orders'),
-                pool.query('SELECT SUM(quantity) as total_items FROM inventory_batches')
+                pool.query('SELECT SUM(quantity) as total_items FROM inventory_batches'),
+                pool.query(expiringQuery),
+                pool.query(pendingOrderQuery)
             ]);
 
             res.json({
@@ -17,9 +30,11 @@ const dashboardController = {
                 data: {
                     totalProducts: parseInt(products.rows[0].count) || 0,
                     totalCategories: parseInt(categories.rows[0].count) || 0,
-                    totalDistributors: parseInt(distributors.rows[0].count) || 0,
+                    totalUsers: parseInt(users.rows[0].count) || 0,
                     totalOrders: parseInt(orders.rows[0].count) || 0,
-                    totalInventoryItems: parseInt(inventory.rows[0].total_items) || 0
+                    totalInventoryItems: parseInt(inventory.rows[0].total_items) || 0,
+                    expiringBatches: parseInt(expiring.rows[0].count) || 0,
+                    pendingOrders: parseInt(pendingOrders.rows[0].count) || 0
                 }
             });
         } catch (error) {

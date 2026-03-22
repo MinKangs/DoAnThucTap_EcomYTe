@@ -2,19 +2,22 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 
-// Bổ sung authorizeAdmin vào đây
-const { protect, authorizeAdmin } = require('../config/authMiddleware');
+// Import middleware xác thực của hệ thống (điều chỉnh đường dẫn thư mục nếu cần thiết)
+const { verifyToken, isAdmin } = require('../middlewares/authMiddleware'); 
 
-// Các Route không cần đăng nhập
-router.post('/register', userController.register);
-router.post('/login', userController.login);
+// ==========================================================
+// ĐƯỜNG DẪN DÀNH CHO KHÁCH HÀNG (Yêu cầu phải đăng nhập)
+// ==========================================================
+// Chèn verifyToken vào trước hàm xử lý của Controller
+router.get('/profile', verifyToken, userController.getProfile);
+router.put('/profile', verifyToken, userController.updateProfile);
 
-// Các Route dành cho tài khoản cá nhân
-router.get('/profile', protect, userController.getProfile);
-router.put('/profile', protect, userController.updateProfile);
-
-// --- ROUTE DÀNH CHO ADMIN ---
-router.get('/', protect, authorizeAdmin, userController.getAllUsersAdmin);
-router.put('/:id', protect, authorizeAdmin, userController.updateUserAdmin);
+// ==========================================================
+// ĐƯỜNG DẪN DÀNH CHO ADMIN (Yêu cầu đăng nhập và có quyền admin)
+// ==========================================================
+router.get('/', verifyToken, isAdmin, userController.getAllUsers);
+router.post('/', verifyToken, isAdmin, userController.createUser);
+router.put('/:id', verifyToken, isAdmin, userController.updateUser);
+router.delete('/:id', verifyToken, isAdmin, userController.deleteUser);
 
 module.exports = router;
