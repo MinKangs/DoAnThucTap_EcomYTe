@@ -3,9 +3,9 @@ const Order = require('../models/orderModel');
 
 const orderController = {
     // Xử lý Khách hàng đặt hàng (Guest Checkout / LocalStorage)
+    // Xử lý Khách hàng đặt hàng (Guest Checkout / LocalStorage)
     placeOrder: async (req, res) => {
         try {
-            // Thêm user_id vào danh sách nhận từ req.body
             const { user_id, full_name, phone, shipping_address, notes, payment_method, total_amount, items } = req.body;
 
             if (!full_name || !phone || !shipping_address || !payment_method) {
@@ -16,9 +16,9 @@ const orderController = {
                 return res.status(400).json({ success: false, message: 'Giỏ hàng đang trống, không thể đặt hàng.' });
             }
 
-            // Đưa user_id vào orderData
             const orderData = { user_id, full_name, phone, shipping_address, notes, payment_method, total_amount };
             
+            // Gọi hàm tạo đơn và trừ kho
             const newOrderId = await Order.createOrder(orderData, items);
 
             res.status(201).json({ 
@@ -28,7 +28,16 @@ const orderController = {
             });
         } catch (error) {
             console.error('Lỗi khi đặt hàng:', error);
-            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi xử lý đơn hàng' });
+            
+            // Bắt lỗi kho không đủ hàng từ Transaction của Model
+            if (error.message.startsWith('INSUFFICIENT_STOCK_')) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Rất tiếc, một số sản phẩm trong đơn hàng đã hết hàng hoặc không đủ số lượng tồn kho lúc này. Vui lòng kiểm tra lại.' 
+                });
+            }
+
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi xử lý đơn hàng.' });
         }
     },
 

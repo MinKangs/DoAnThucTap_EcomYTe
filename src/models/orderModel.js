@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 const Order = {
-    // Tạo bản ghi đơn hàng mới và chi tiết sản phẩm (Transaction)
+    // Tạo bản ghi đơn hàng mới, chi tiết sản phẩm và trừ tồn kho (Transaction)
     createOrder: async (orderData, items) => {
         const client = await pool.connect();
         try {
@@ -14,7 +14,7 @@ const Order = {
                 RETURNING id;
             `;
             const orderValues = [
-                orderData.user_id || null, // Nếu có user_id thì lưu, không thì lưu null (khách vãng lai)
+                orderData.user_id || null, 
                 orderData.full_name, 
                 orderData.phone, 
                 orderData.shipping_address, 
@@ -25,20 +25,75 @@ const Order = {
             const orderResult = await client.query(orderQuery, orderValues);
             const orderId = orderResult.rows[0].id;
 
-            // 2. Thêm từng sản phẩm vào bảng order_items
+            // 2. Xử lý từng sản phẩm: Thêm vào order_items VÀ Trừ kho (FIFO)
             const itemQuery = `
                 INSERT INTO order_items (order_id, product_id, quantity, price, price_at_purchase)
                 VALUES ($1, $2, $3, $4, $4);
             `;
+
             for (let item of items) {
+                // A. Lưu chi tiết đơn hàng
                 await client.query(itemQuery, [orderId, item.product_id, item.quantity, item.price]);
+
+                // B. Trừ tồn kho theo cơ chế FIFO và Ghi log xuất kho
+            let remainingToDeduct = item.quantity;
+
+            const batchQuery = `
+                SELECT id, quantity, warehouse_id 
+                FROM inventory_batches 
+                WHERE product_id = $1 
+                  AND quantity > 0 
+                  AND expiration_date > CURRENT_DATE
+                ORDER BY expiration_date ASC 
+                FOR UPDATE;
+            `;
+            const batchResult = await client.query(batchQuery, [item.product_id]);
+            const batches = batchResult.rows;
+
+            for (let batch of batches) {
+                if (remainingToDeduct === 0) break;
+
+                let deductAmount = 0;
+                if (batch.quantity >= remainingToDeduct) {
+                    deductAmount = remainingToDeduct;
+                    remainingToDeduct = 0;
+                } else {
+                    deductAmount = batch.quantity;
+                    remainingToDeduct -= batch.quantity;
+                }
+
+                // Cập nhật lại số lượng của lô hàng đó
+                await client.query(
+                    `UPDATE inventory_batches SET quantity = quantity - $1 WHERE id = $2`,
+                    [deductAmount, batch.id]
+                );
+
+                // GHI LOG XUẤT KHO VÀO BẢNG inventory_transactions (Loại: 'export')
+                await client.query(
+                    `INSERT INTO inventory_transactions (product_id, batch_id, warehouse_id, transaction_type, quantity, note, created_by)
+                     VALUES ($1, $2, $3, 'export', $4, $5, $6)`,
+                    [
+                        item.product_id, 
+                        batch.id, 
+                        batch.warehouse_id, 
+                        deductAmount, 
+                        `Xuất kho bán hàng - Đơn ĐH #${orderId}`, 
+                        orderData.user_id || null // Lưu ID người mua (nếu đã đăng nhập)
+                    ]
+                );
+            }
+
+            // C. Kiểm tra an toàn: Nếu duyệt hết các lô mà vẫn chưa trừ đủ số lượng yêu cầu -> Kho không đủ
+            if (remainingToDeduct > 0) {
+                throw new Error(`INSUFFICIENT_STOCK_${item.product_id}`);
+            }
             }
 
             await client.query('COMMIT');
             return orderId;
         } catch (error) {
             await client.query('ROLLBACK');
-            throw error;
+            throw error; // Ném lỗi ra để Controller bắt
         } finally {
             client.release();
         }

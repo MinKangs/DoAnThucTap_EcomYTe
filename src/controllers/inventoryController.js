@@ -15,15 +15,14 @@ const inventoryController = {
     // [POST] Xử lý nhập kho
     importBatch: async (req, res) => {
         try {
-            // Đã bổ sung location_id
             const { product_id, location_id, batch_number, import_date, expiration_date, quantity } = req.body;
+            const created_by = req.user?.id; // Lấy ID của nhân viên đang thao tác
             
-            // Kiểm tra dữ liệu đầu vào
             if (!product_id || !location_id || !batch_number || !import_date || !expiration_date || quantity == null) {
                 return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin lô hàng và vị trí lưu trữ.' });
             }
 
-            const newBatch = await Inventory.addBatch({ product_id, location_id, batch_number, import_date, expiration_date, quantity });
+            const newBatch = await Inventory.addBatch({ product_id, location_id, batch_number, import_date, expiration_date, quantity, created_by });
             res.status(201).json({ success: true, message: 'Nhập kho thành công', data: newBatch });
         } catch (error) {
             console.error('Lỗi khi nhập kho:', error);
@@ -58,6 +57,17 @@ const inventoryController = {
         } catch (error) {
             console.error('Lỗi khi xóa lô hàng:', error);
             res.status(500).json({ success: false, message: 'Không thể xóa lô hàng này do có dữ liệu liên kết.' });
+        }
+    },
+
+    // [GET] Lấy danh sách lịch sử giao dịch
+    getTransactions: async (req, res) => {
+        try {
+            const transactions = await Inventory.getTransactionHistory();
+            res.status(200).json({ success: true, data: transactions });
+        } catch (error) {
+            console.error('Lỗi khi lấy lịch sử giao dịch kho:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
         }
     }
 };

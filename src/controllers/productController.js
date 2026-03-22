@@ -11,26 +11,24 @@ const productController = {
         }
     },
 
-createProduct: async (req, res) => {
+    createProduct: async (req, res) => {
         try {
-            // Yêu cầu nhập ít nhất tên và giá
             if (!req.body.name || !req.body.price) {
                 return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc (name, price)' });
             }
 
-            // Xử lý hình ảnh: Ưu tiên file tải lên, nếu không có thì lấy link URL (nếu Frontend vẫn gửi), hoặc để null
-            let imageUrl = req.body.image || null; 
+            // 1. Xử lý hình ảnh tải lên
+            let imageUrl = null; 
             if (req.file) {
                 imageUrl = `/uploads/${req.file.filename}`;
             }
 
-            // Gộp dữ liệu text từ form và đường dẫn ảnh mới
+            // 2. Gộp dữ liệu, đảm bảo key là "image_url" khớp với Model
             const productData = {
                 ...req.body,
-                image: imageUrl
+                image_url: imageUrl 
             };
 
-            // Truyền productData (đã có chứa ảnh) vào Model như cũ
             const newProduct = await Product.createProduct(productData);
             res.status(201).json({ success: true, data: newProduct });
         } catch (error) {
@@ -41,10 +39,24 @@ createProduct: async (req, res) => {
     
     updateProduct: async (req, res) => {
         try {
-            const updatedProduct = await Product.updateProduct(req.params.id, req.body);
-            if (!updatedProduct) {
+            // 1. Lấy thông tin sản phẩm cũ từ CSDL để kiểm tra ảnh
+            const oldProduct = await Product.getProductById(req.params.id);
+            if (!oldProduct) {
                 return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
             }
+
+            // 2. Nếu có upload file mới thì lấy link mới, nếu không thì giữ nguyên link cũ
+            let imageUrl = oldProduct.image_url; 
+            if (req.file) {
+                imageUrl = `/uploads/${req.file.filename}`;
+            }
+
+            const productData = {
+                ...req.body,
+                image_url: imageUrl
+            };
+
+            const updatedProduct = await Product.updateProduct(req.params.id, productData);
             res.status(200).json({ success: true, data: updatedProduct });
         } catch (error) {
             console.error('Lỗi khi cập nhật sản phẩm:', error);
@@ -54,11 +66,30 @@ createProduct: async (req, res) => {
 
     deleteProduct: async (req, res) => {
         try {
-            const hiddenProduct = await Product.hideProduct(req.params.id);
-            if (!hiddenProduct) {
-                return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
+            const { force } = req.query; // Nhận cờ ép buộc xóa vĩnh viễn từ Frontend
+            const productId = req.params.id;
+
+            if (force === 'true') {
+                // 1. Kiểm tra an toàn: Nếu sản phẩm đã có người mua thì TUYỆT ĐỐI không cho xóa vĩnh viễn
+                const hasOrders = await Product.checkProductInOrders(productId);
+                if (hasOrders) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'TỪ CHỐI XÓA: Sản phẩm này đã nằm trong lịch sử đơn hàng của khách. Hãy dùng chức năng "Ẩn" để không làm hỏng dữ liệu hệ thống.' 
+                    });
+                }
+
+                // 2. Nếu là dữ liệu rác (chưa ai mua), cho phép xóa sạch
+                await Product.hardDeleteProduct(productId);
+                return res.status(200).json({ success: true, message: 'Đã xóa vĩnh viễn dữ liệu rác.' });
+            } else {
+                // 3. Logic Ẩn sản phẩm (Soft Delete) mặc định
+                const hiddenProduct = await Product.hideProduct(productId);
+                if (!hiddenProduct) {
+                    return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
+                }
+                return res.status(200).json({ success: true, message: 'Đã chuyển sản phẩm về trạng thái Ẩn.' });
             }
-            res.status(200).json({ success: true, message: 'Đã ẩn sản phẩm thành công' });
         } catch (error) {
             console.error('Lỗi khi xóa sản phẩm:', error);
             res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
@@ -81,7 +112,5 @@ createProduct: async (req, res) => {
         }
     }
 };
-
-
 
 module.exports = productController;

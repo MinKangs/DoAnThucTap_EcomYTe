@@ -1,0 +1,1826 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+config/db.js
+controllers/authController.js
+controllers/cartController.js
+controllers/categoryController.js
+controllers/dashboardController.js
+controllers/distributorController.js
+controllers/inventoryController.js
+controllers/locationController.js
+controllers/orderController.js
+controllers/productController.js
+controllers/reportController.js
+controllers/shippingController.js
+controllers/userController.js
+controllers/warehouseController.js
+middlewares/authMiddleware.js
+middlewares/uploadMiddleware.js
+models/cartModel.js
+models/distributorModel.js
+models/inventoryModel.js
+models/orderModel.js
+models/productModel.js
+models/reportModel.js
+models/userModel.js
+routes/authRoutes.js
+routes/cartRoutes.js
+routes/categoryRoutes.js
+routes/dashboardRoutes.js
+routes/distributorRoutes.js
+routes/inventoryRoutes.js
+routes/locationRoutes.js
+routes/orderRoutes.js
+routes/productRoutes.js
+routes/reportRoutes.js
+routes/userRoutes.js
+routes/warehouseRoutes.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="config/db.js">
+const { Pool } = require('pg');
+require('dotenv').config();
+
+const pool = new Pool({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+});
+
+// Kiểm tra kết nối
+pool.connect((err, client, release) => {
+    if (err) {
+        console.error('Lỗi kết nối cơ sở dữ liệu:', err.stack);
+    } else {
+        console.log('Đã kết nối thành công đến CSDL:', process.env.DB_NAME);
+    }
+});
+
+module.exports = pool;
+</file>
+
+<file path="controllers/authController.js">
+const User = require('../models/userModel');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const authController = {
+    register: async (req, res) => {
+        try {
+            const { full_name, email, password, phone } = req.body;
+
+            // Kiểm tra email đã tồn tại chưa
+            const existingUser = await User.findByEmail(email);
+            if (existingUser) {
+                return res.status(400).json({ success: false, message: 'Email này đã được sử dụng.' });
+            }
+
+            // Mã hóa mật khẩu (Salt round = 10)
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            // Lưu vào CSDL - Gọi đúng hàm createUser và truyền password_hash
+            const newUser = await User.createUser({
+                full_name, 
+                email, 
+                password_hash: hashedPassword, 
+                phone
+            });
+
+            res.status(201).json({ success: true, message: 'Đăng ký thành công', data: newUser });
+        } catch (error) {
+            console.error('Lỗi khi đăng ký:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    login: async (req, res) => {
+        try {
+            const { email, password } = req.body;
+
+            // Kiểm tra email
+            const user = await User.findByEmail(email);
+            if (!user) {
+                return res.status(400).json({ success: false, message: 'Email hoặc mật khẩu không chính xác.' });
+            }
+
+            // Kiểm tra mật khẩu bằng bcrypt - Đối chiếu với trường password_hash
+            const isMatch = await bcrypt.compare(password, user.password_hash);
+            if (!isMatch) {
+                return res.status(400).json({ success: false, message: 'Email hoặc mật khẩu không chính xác.' });
+            }
+
+            // Tạo mã thông báo JWT
+            const payload = { id: user.id, role: user.role };
+            const token = jwt.sign(payload, process.env.JWT_SECRET || 'ecom_yte_secret_key_2026', { expiresIn: '1d' });
+
+            res.json({ 
+                success: true, 
+                message: 'Đăng nhập thành công', 
+                token: token,
+                user: {
+                    id: user.id,
+                    full_name: user.full_name,
+                    email: user.email,
+                    role: user.role
+                }
+            });
+        } catch (error) {
+            console.error('Lỗi khi đăng nhập:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
+};
+
+module.exports = authController;
+</file>
+
+<file path="controllers/cartController.js">
+const Cart = require('../models/cartModel');
+const pool = require('../config/db');
+
+const cartController = {
+    // Xem giỏ hàng hiện tại
+    getCart: async (req, res) => {
+        try {
+            let cart = await Cart.getCartByUserId(req.user.id);
+            if (!cart) {
+                cart = await Cart.createCart(req.user.id);
+            }
+            
+            const items = await Cart.getCartItems(cart.id);
+            
+            // Tính tổng tiền đơn hàng
+            const totalAmount = items.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+
+            res.status(200).json({ 
+                success: true, 
+                data: { cart_id: cart.id, items: items, total_amount: totalAmount } 
+            });
+        } catch (error) {
+            console.error('Lỗi lấy giỏ hàng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Thêm sản phẩm vào giỏ
+    addToCart: async (req, res) => {
+        try {
+            const { product_id, quantity } = req.body;
+
+            // 1. Kiểm tra tồn kho của sản phẩm từ bảng inventory_batches
+            const productQuery = await pool.query(`
+                SELECT p.id, COALESCE(SUM(ib.quantity), 0) AS stock 
+                FROM products p 
+                LEFT JOIN inventory_batches ib ON p.id = ib.product_id AND ib.expiration_date > CURRENT_DATE
+                WHERE p.id = $1 AND p.status = $2
+                GROUP BY p.id
+            `, [product_id, 'active']);
+
+            if (productQuery.rows.length === 0) {
+                return res.status(404).json({ success: false, message: 'Sản phẩm không tồn tại hoặc ngừng kinh doanh' });
+            }
+
+            // Khai báo lại biến stock lấy từ kết quả truy vấn
+            const stock = parseInt(productQuery.rows[0].stock, 10);
+
+            // Xử lý trường hợp sản phẩm hết hàng hoàn toàn
+            if (stock === 0) {
+                return res.status(400).json({ success: false, message: 'Sản phẩm hiện đang hết hàng.' });
+            }
+
+            // 2. Lấy hoặc tạo giỏ hàng
+            let cart = await Cart.getCartByUserId(req.user.id);
+            if (!cart) {
+                cart = await Cart.createCart(req.user.id);
+            }
+
+            // 3. Tính toán số lượng cần thêm
+            const existingItem = await Cart.checkItemInCart(cart.id, product_id);
+            let newQuantity = quantity;
+            if (existingItem) {
+                newQuantity += existingItem.quantity;
+            }
+
+            // 4. Xử lý logic tự động điều chỉnh theo tồn kho
+            let message = 'Đã cập nhật giỏ hàng thành công';
+            if (newQuantity > stock) {
+                newQuantity = stock;
+                message = `Số lượng yêu cầu vượt quá tồn kho. Đã tự động điều chỉnh về tối đa ${stock} sản phẩm.`;
+            }
+
+            // 5. Lưu vào CSDL
+            if (existingItem) {
+                await Cart.updateItemQuantity(existingItem.id, newQuantity);
+            } else {
+                await Cart.addItem(cart.id, product_id, newQuantity);
+            }
+
+            res.status(200).json({ success: true, message: message });
+        } catch (error) {
+            console.error('Lỗi thêm vào giỏ:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Xóa sản phẩm khỏi giỏ
+    removeFromCart: async (req, res) => {
+        try {
+            await Cart.removeItem(req.params.id);
+            res.status(200).json({ success: true, message: 'Đã xóa sản phẩm khỏi giỏ hàng' });
+        } catch (error) {
+            console.error('Lỗi xóa khỏi giỏ:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
+};
+
+module.exports = cartController;
+</file>
+
+<file path="controllers/categoryController.js">
+const pool = require('../config/db');
+
+// [GET] Lấy danh sách danh mục
+const getCategories = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM categories ORDER BY id DESC');
+        res.json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+    }
+};
+
+// [POST] Thêm danh mục mới
+const createCategory = async (req, res) => {
+    const { name, description } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO categories (name, description) VALUES ($1, $2) RETURNING *',
+            [name, description]
+        );
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi tạo danh mục' });
+    }
+};
+
+// [PUT] Cập nhật danh mục
+const updateCategory = async (req, res) => {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE categories SET name = $1, description = $2 WHERE id = $3 RETURNING *',
+            [name, description, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy danh mục' });
+        }
+        res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi cập nhật danh mục' });
+    }
+};
+
+// [DELETE] Xóa danh mục
+const deleteCategory = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM categories WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy danh mục' });
+        }
+        res.json({ success: true, message: 'Đã xóa danh mục thành công' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Không thể xóa. Danh mục này đang chứa sản phẩm.' });
+    }
+};
+
+module.exports = { getCategories, createCategory, updateCategory, deleteCategory };
+</file>
+
+<file path="controllers/dashboardController.js">
+const pool = require('../config/db');
+
+const dashboardController = {
+    getSummary: async (req, res) => {
+        try {
+            const expiringQuery = `
+                SELECT COUNT(*) 
+                FROM inventory_batches 
+                WHERE expiration_date <= CURRENT_DATE + INTERVAL '30 days'
+            `;
+
+            const pendingOrderQuery = `
+                SELECT COUNT(*) 
+                FROM orders 
+                WHERE status = 'pending'
+            `;
+
+            const [products, categories, users, orders, inventory, expiring, pendingOrders] = await Promise.all([
+                pool.query('SELECT COUNT(*) FROM products'),
+                pool.query('SELECT COUNT(*) FROM categories'),
+                pool.query('SELECT COUNT(*) FROM users'),
+                pool.query('SELECT COUNT(*) FROM orders'),
+                pool.query('SELECT SUM(quantity) as total_items FROM inventory_batches'),
+                pool.query(expiringQuery),
+                pool.query(pendingOrderQuery)
+            ]);
+
+            res.json({
+                success: true,
+                data: {
+                    totalProducts: parseInt(products.rows[0].count) || 0,
+                    totalCategories: parseInt(categories.rows[0].count) || 0,
+                    totalUsers: parseInt(users.rows[0].count) || 0,
+                    totalOrders: parseInt(orders.rows[0].count) || 0,
+                    totalInventoryItems: parseInt(inventory.rows[0].total_items) || 0,
+                    expiringBatches: parseInt(expiring.rows[0].count) || 0,
+                    pendingOrders: parseInt(pendingOrders.rows[0].count) || 0
+                }
+            });
+        } catch (error) {
+            console.error('Lỗi khi lấy dữ liệu thống kê:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
+};
+
+module.exports = dashboardController;
+</file>
+
+<file path="controllers/distributorController.js">
+const Distributor = require('../models/distributorModel');
+
+const distributorController = {
+    getDistributors: async (req, res) => {
+        try {
+            const distributors = await Distributor.getAllDistributors();
+            res.status(200).json({ success: true, count: distributors.length, data: distributors });
+        } catch (error) {
+            console.error('Lỗi khi lấy danh sách nhà phân phối:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    addDistributor: async (req, res) => {
+        try {
+            const { name, tax_code, address, phone } = req.body;
+            if (!name) {
+                return res.status(400).json({ success: false, message: 'Tên nhà phân phối là bắt buộc.' });
+            }
+            
+            const newDistributor = await Distributor.createDistributor({ name, tax_code, address, phone });
+            res.status(201).json({ success: true, message: 'Thêm nhà phân phối thành công', data: newDistributor });
+        } catch (error) {
+            // Bắt lỗi trùng mã số thuế (UNIQUE constraint)
+            if (error.code === '23505') {
+                return res.status(400).json({ success: false, message: 'Mã số thuế hoặc thông tin này đã tồn tại.' });
+            }
+            console.error('Lỗi khi thêm nhà phân phối:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    editDistributor: async (req, res) => {
+        try {
+            const updatedDistributor = await Distributor.updateDistributor(req.params.id, req.body);
+            if (!updatedDistributor) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy nhà phân phối.' });
+            }
+            res.status(200).json({ success: true, message: 'Cập nhật thành công', data: updatedDistributor });
+        } catch (error) {
+            console.error('Lỗi khi cập nhật nhà phân phối:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    removeDistributor: async (req, res) => {
+        try {
+            const result = await Distributor.checkAndDelete(req.params.id);
+            if (!result.data) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy nhà phân phối.' });
+            }
+            
+            if (result.action === 'deactivated') {
+                res.status(200).json({ success: true, message: 'Nhà phân phối có dữ liệu liên kết. Đã chuyển trạng thái sang Ngừng hợp tác.', data: result.data });
+            } else {
+                res.status(200).json({ success: true, message: 'Đã xóa hoàn toàn nhà phân phối khỏi hệ thống.' });
+            }
+        } catch (error) {
+            console.error('Lỗi khi xử lý xóa nhà phân phối:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
+};
+
+module.exports = distributorController;
+</file>
+
+<file path="controllers/inventoryController.js">
+const Inventory = require('../models/inventoryModel');
+
+const inventoryController = {
+    // [GET] Lấy danh sách kho
+    getInventory: async (req, res) => {
+        try {
+            const batches = await Inventory.getAllBatches();
+            res.status(200).json({ success: true, data: batches });
+        } catch (error) {
+            console.error('Lỗi khi lấy dữ liệu kho hàng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // [POST] Xử lý nhập kho
+    importBatch: async (req, res) => {
+        try {
+            // Đã bổ sung location_id
+            const { product_id, location_id, batch_number, import_date, expiration_date, quantity } = req.body;
+            
+            // Kiểm tra dữ liệu đầu vào
+            if (!product_id || !location_id || !batch_number || !import_date || !expiration_date || quantity == null) {
+                return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin lô hàng và vị trí lưu trữ.' });
+            }
+
+            const newBatch = await Inventory.addBatch({ product_id, location_id, batch_number, import_date, expiration_date, quantity });
+            res.status(201).json({ success: true, message: 'Nhập kho thành công', data: newBatch });
+        } catch (error) {
+            console.error('Lỗi khi nhập kho:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // [PUT] Cập nhật thông tin lô hàng
+    updateBatch: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const updatedBatch = await Inventory.updateBatch(id, req.body);
+            if (!updatedBatch) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy lô hàng' });
+            }
+            res.status(200).json({ success: true, message: 'Cập nhật lô hàng thành công', data: updatedBatch });
+        } catch (error) {
+            console.error('Lỗi khi cập nhật lô hàng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // [DELETE] Xóa lô hàng
+    deleteBatch: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const deletedBatch = await Inventory.deleteBatch(id);
+            if (!deletedBatch) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy lô hàng' });
+            }
+            res.status(200).json({ success: true, message: 'Đã xóa lô hàng thành công' });
+        } catch (error) {
+            console.error('Lỗi khi xóa lô hàng:', error);
+            res.status(500).json({ success: false, message: 'Không thể xóa lô hàng này do có dữ liệu liên kết.' });
+        }
+    }
+};
+
+module.exports = inventoryController;
+</file>
+
+<file path="controllers/locationController.js">
+const pool = require('../config/db');
+
+const getLocations = async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT sl.*, w.name AS warehouse_name 
+            FROM storage_locations sl
+            JOIN warehouses w ON sl.warehouse_id = w.id
+            ORDER BY sl.id DESC
+        `);
+        res.json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+    }
+};
+
+const createLocation = async (req, res) => {
+    const { warehouse_id, zone, shelf } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO storage_locations (warehouse_id, zone, shelf) VALUES ($1, $2, $3) RETURNING *',
+            [warehouse_id, zone, shelf]
+        );
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi tạo vị trí lưu trữ' });
+    }
+};
+
+const updateLocation = async (req, res) => {
+    const { id } = req.params;
+    const { warehouse_id, zone, shelf } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE storage_locations SET warehouse_id = $1, zone = $2, shelf = $3 WHERE id = $4 RETURNING *',
+            [warehouse_id, zone, shelf, id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy vị trí' });
+        res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi cập nhật vị trí' });
+    }
+};
+
+// [DELETE] Xóa vị trí
+const deleteLocation = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM storage_locations WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy vị trí' });
+        res.json({ success: true, message: 'Đã xóa vị trí thành công' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi xóa vị trí' });
+    }
+};
+
+module.exports = { getLocations, createLocation, updateLocation, deleteLocation };
+</file>
+
+<file path="controllers/orderController.js">
+const Order = require('../models/orderModel');
+// Không cần require Cart Model ở đây nữa vì Frontend gửi trực tiếp mảng items
+
+const orderController = {
+    // Xử lý Khách hàng đặt hàng (Guest Checkout / LocalStorage)
+    placeOrder: async (req, res) => {
+        try {
+            // Thêm user_id vào danh sách nhận từ req.body
+            const { user_id, full_name, phone, shipping_address, notes, payment_method, total_amount, items } = req.body;
+
+            if (!full_name || !phone || !shipping_address || !payment_method) {
+                return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin giao hàng.' });
+            }
+
+            if (!items || items.length === 0) {
+                return res.status(400).json({ success: false, message: 'Giỏ hàng đang trống, không thể đặt hàng.' });
+            }
+
+            // Đưa user_id vào orderData
+            const orderData = { user_id, full_name, phone, shipping_address, notes, payment_method, total_amount };
+            
+            const newOrderId = await Order.createOrder(orderData, items);
+
+            res.status(201).json({ 
+                success: true, 
+                message: 'Đặt hàng thành công.', 
+                data: { order_id: newOrderId }
+            });
+        } catch (error) {
+            console.error('Lỗi khi đặt hàng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ khi xử lý đơn hàng' });
+        }
+    },
+
+    // Xem lịch sử đơn hàng (Yêu cầu đăng nhập)
+    getMyOrders: async (req, res) => {
+        try {
+            // Phần này giữ nguyên, sau này làm tính năng Auth sẽ dùng đến
+            const userId = req.user?.id; 
+            if(!userId) return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập.' });
+            
+            const orders = await Order.getMyOrders(userId);
+
+            if (orders.length === 0) {
+                return res.status(200).json({ success: true, message: 'Bạn chưa có đơn hàng nào.', data: [] });
+            }
+
+            for (let i = 0; i < orders.length; i++) {
+                orders[i].items = await Order.getOrderDetails(orders[i].id);
+            }
+
+            res.status(200).json({ success: true, count: orders.length, data: orders });
+        } catch (error) {
+            console.error('Lỗi khi lấy lịch sử đơn hàng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Xem tất cả đơn hàng (Admin)
+    getAllOrdersAdmin: async (req, res) => {
+        try {
+            const orders = await Order.getAllOrdersAdmin();
+            for (let i = 0; i < orders.length; i++) {
+                orders[i].items = await Order.getOrderDetails(orders[i].id);
+            }
+            res.status(200).json({ success: true, count: orders.length, data: orders });
+        } catch (error) {
+            console.error('Lỗi khi lấy tất cả đơn hàng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Cập nhật trạng thái đơn hàng (Admin)
+    updateOrderStatusAdmin: async (req, res) => {
+        try {
+            const { status } = req.body;
+            // Gọi hàm updateOrderStatus từ Model
+            const updatedOrder = await Order.updateOrderStatus(req.params.id, status);
+            
+            if (!updatedOrder) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
+            }
+            res.status(200).json({ success: true, message: 'Đã cập nhật trạng thái đơn hàng', data: updatedOrder });
+        } catch (error) {
+            console.error('Lỗi cập nhật trạng thái:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
+};
+
+module.exports = orderController;
+</file>
+
+<file path="controllers/productController.js">
+const Product = require('../models/productModel');
+
+const productController = {
+    getAllProducts: async (req, res) => {
+        try {
+            const products = await Product.getAllProducts();
+            res.status(200).json({ success: true, count: products.length, data: products });
+        } catch (error) {
+            console.error('Lỗi khi truy vấn sản phẩm:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+createProduct: async (req, res) => {
+        try {
+            // Yêu cầu nhập ít nhất tên và giá
+            if (!req.body.name || !req.body.price) {
+                return res.status(400).json({ success: false, message: 'Thiếu thông tin bắt buộc (name, price)' });
+            }
+
+            // Xử lý hình ảnh: Ưu tiên file tải lên, nếu không có thì lấy link URL (nếu Frontend vẫn gửi), hoặc để null
+            let imageUrl = req.body.image || null; 
+            if (req.file) {
+                imageUrl = `/uploads/${req.file.filename}`;
+            }
+
+            // Gộp dữ liệu text từ form và đường dẫn ảnh mới
+            const productData = {
+                ...req.body,
+                image: imageUrl
+            };
+
+            // Truyền productData (đã có chứa ảnh) vào Model như cũ
+            const newProduct = await Product.createProduct(productData);
+            res.status(201).json({ success: true, data: newProduct });
+        } catch (error) {
+            console.error('Lỗi khi thêm sản phẩm:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+    
+    updateProduct: async (req, res) => {
+        try {
+            const updatedProduct = await Product.updateProduct(req.params.id, req.body);
+            if (!updatedProduct) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
+            }
+            res.status(200).json({ success: true, data: updatedProduct });
+        } catch (error) {
+            console.error('Lỗi khi cập nhật sản phẩm:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    deleteProduct: async (req, res) => {
+        try {
+            const hiddenProduct = await Product.hideProduct(req.params.id);
+            if (!hiddenProduct) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
+            }
+            res.status(200).json({ success: true, message: 'Đã ẩn sản phẩm thành công' });
+        } catch (error) {
+            console.error('Lỗi khi xóa sản phẩm:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    getProductById: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const product = await Product.getProductById(id);
+            
+            if (!product) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
+            }
+            
+            res.json({ success: true, data: product });
+        } catch (error) {
+            console.error('Lỗi khi lấy chi tiết sản phẩm:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+        }
+    }
+};
+
+
+
+module.exports = productController;
+</file>
+
+<file path="controllers/reportController.js">
+const Report = require('../models/reportModel');
+
+const reportController = {
+    getDashboardStats: async (req, res) => {
+        try {
+            const { startDate, endDate } = req.query;
+
+            const summary = await Report.getRevenueSummary(startDate, endDate);
+            const topProducts = await Report.getTopSellingProducts();
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    summary: {
+                        total_orders: parseInt(summary.total_orders, 10),
+                        total_revenue: parseFloat(summary.total_revenue)
+                    },
+                    top_products: topProducts
+                }
+            });
+        } catch (error) {
+            console.error('Lỗi khi lấy dữ liệu thống kê:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
+};
+
+module.exports = reportController;
+</file>
+
+<file path="controllers/shippingController.js">
+const pool = require('../config/db');
+
+const getShippingPartners = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM shipping_partners ORDER BY id DESC');
+        res.json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+    }
+};
+
+const createShippingPartner = async (req, res) => {
+    const { name, phone, email, status } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO shipping_partners (name, phone, email, status) VALUES ($1, $2, $3, $4) RETURNING *',
+            [name, phone, email, status || 'active']
+        );
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi tạo đơn vị vận chuyển' });
+    }
+};
+
+// [PUT] Cập nhật đối tác
+const updateShippingPartner = async (req, res) => {
+    const { id } = req.params;
+    const { name, phone, email, status } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE shipping_partners SET name = $1, phone = $2, email = $3, status = $4 WHERE id = $5 RETURNING *',
+            [name, phone, email, status, id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy đối tác' });
+        res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi cập nhật đối tác' });
+    }
+};
+
+// [DELETE] Xóa đối tác
+const deleteShippingPartner = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM shipping_partners WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy đối tác' });
+        res.json({ success: true, message: 'Đã xóa đối tác thành công' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi xóa đối tác' });
+    }
+};
+
+
+
+module.exports = { getShippingPartners, createShippingPartner, updateShippingPartner, deleteShippingPartner };
+</file>
+
+<file path="controllers/userController.js">
+const User = require('../models/userModel');
+const bcrypt = require('bcrypt'); // Cần thiết để Admin mã hóa mật khẩu khi tạo/sửa User
+
+const userController = {
+    // ==========================================
+    // DÀNH CHO KHÁCH HÀNG (USER THƯỜNG)
+    // ==========================================
+    
+    getProfile: async (req, res) => {
+        try {
+            const user = await User.findById(req.user.id);
+            if (!user) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+            }
+            res.status(200).json({ success: true, data: user });
+        } catch (error) {
+            console.error('Lỗi khi lấy hồ sơ:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ.' });
+        }
+    },
+
+    updateProfile: async (req, res) => {
+        try {
+            const updatedUser = await User.updateProfile(req.user.id, req.body);
+            res.status(200).json({ success: true, message: 'Cập nhật hồ sơ thành công', data: updatedUser });
+        } catch (error) {
+            console.error('Lỗi khi cập nhật hồ sơ:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ.' });
+        }
+    },
+
+    // ==========================================
+    // DÀNH CHO QUẢN TRỊ VIÊN (ADMIN)
+    // ==========================================
+
+    // Lấy danh sách (GET /api/users)
+    getAllUsers: async (req, res) => {
+        try {
+            const users = await User.getAllUsers();
+            res.status(200).json({ success: true, count: users.length, data: users });
+        } catch (error) {
+            console.error('Lỗi khi lấy danh sách người dùng:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Tạo người dùng mới (POST /api/users)
+    createUser: async (req, res) => {
+        try {
+            const { full_name, email, phone, password, role, status } = req.body;
+            
+            // Mã hóa mật khẩu do Admin cấp
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            const userData = {
+                full_name,
+                email,
+                phone,
+                password: hashedPassword,
+                role: role || 'user',
+                status: status || 'active'
+            };
+
+            // Lưu ý: Cần đảm bảo model User có hàm createUser tương ứng
+            const newUser = await User.createUser(userData);
+            res.status(201).json({ success: true, message: 'Tạo tài khoản thành công', data: newUser });
+        } catch (error) {
+            console.error('Lỗi khi tạo tài khoản:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Cập nhật người dùng (PUT /api/users/:id)
+    updateUser: async (req, res) => {
+        try {
+            const targetUserId = parseInt(req.params.id);
+            const updateData = { ...req.body };
+            
+            // Chặn Admin tự khóa tài khoản của chính mình (đã sửa 'locked' thành 'inactive' theo frontend)
+            if (req.user.id === targetUserId && updateData.status === 'inactive') {
+                return res.status(403).json({ success: false, message: 'Hệ thống từ chối thao tác: Không thể tự khóa tài khoản của chính mình.' });
+            }
+
+            // Nếu Admin có nhập mật khẩu mới, tiến hành mã hóa trước khi lưu
+            if (updateData.password) {
+                const salt = await bcrypt.genSalt(10);
+                updateData.password = await bcrypt.hash(updateData.password, salt);
+            }
+
+            // Lưu ý: Cần đảm bảo model User có hàm updateUser xử lý được các trường này
+            const updatedUser = await User.updateUser(targetUserId, updateData);
+            
+            if (!updatedUser) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+            }
+
+            res.status(200).json({ success: true, message: 'Cập nhật tài khoản thành công', data: updatedUser });
+        } catch (error) {
+            console.error('Lỗi khi cập nhật tài khoản:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    },
+
+    // Xóa/Khóa người dùng (DELETE /api/users/:id)
+    deleteUser: async (req, res) => {
+        try {
+            const targetUserId = parseInt(req.params.id);
+
+            // Chặn Admin tự xóa chính mình
+            if (req.user.id === targetUserId) {
+                return res.status(403).json({ success: false, message: 'Hệ thống từ chối thao tác: Không thể tự xóa tài khoản của chính mình.' });
+            }
+
+            // Lưu ý: Cần đảm bảo model User có hàm deleteUser
+            await User.deleteUser(targetUserId);
+            
+            res.status(200).json({ success: true, message: 'Thao tác trên tài khoản thành công' });
+        } catch (error) {
+            console.error('Lỗi khi xóa tài khoản:', error);
+            res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+        }
+    }
+};
+
+module.exports = userController;
+</file>
+
+<file path="controllers/warehouseController.js">
+const pool = require('../config/db'); // Đảm bảo đường dẫn này khớp với cấu hình kết nối PostgreSQL của bạn
+
+// [GET] Lấy danh sách kho hàng
+const getWarehouses = async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM warehouses ORDER BY id DESC');
+        res.json({ success: true, data: result.rows });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ nội bộ' });
+    }
+};
+
+// [POST] Thêm kho hàng mới
+const createWarehouse = async (req, res) => {
+    const { name, type, address, status } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO warehouses (name, type, address, status) VALUES ($1, $2, $3, $4) RETURNING *',
+            [name, type || 'main', address, status || 'active']
+        );
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi tạo kho hàng' });
+    }
+};
+
+// [PUT] Cập nhật thông tin kho hàng
+const updateWarehouse = async (req, res) => {
+    const { id } = req.params;
+    const { name, type, address, status } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE warehouses SET name = $1, type = $2, address = $3, status = $4 WHERE id = $5 RETURNING *',
+            [name, type, address, status, id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy kho hàng' });
+        }
+        res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi cập nhật kho hàng' });
+    }   
+};
+
+const deleteWarehouse = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM warehouses WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy kho hàng' });
+        }
+        res.json({ success: true, message: 'Đã xóa kho hàng thành công' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Lỗi khi xóa kho hàng. Có thể do dữ liệu đang được liên kết.' });
+    }
+};
+
+module.exports = {
+    getWarehouses,
+    createWarehouse,
+    updateWarehouse,
+    deleteWarehouse
+};
+</file>
+
+<file path="middlewares/authMiddleware.js">
+const jwt = require('jsonwebtoken');
+
+const verifyToken = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Truy cập bị từ chối. Không tìm thấy token xác thực.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+        req.user = decoded; 
+        next();
+    } catch (error) {
+        return res.status(403).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn.' });
+    }
+};
+
+// Chỉ dành riêng cho Admin (Dùng cho userRoutes)
+const isAdmin = (req, res, next) => {
+    if (req.user && req.user.role === 'admin') {
+        next();
+    } else {
+        return res.status(403).json({ success: false, message: 'Truy cập bị từ chối. Yêu cầu quyền Quản trị viên.' });
+    }
+};
+
+// Dành cho cả Admin và Nhân viên (Dùng cho productRoutes, orderRoutes, categoryRoutes...)
+const isStaffOrAdmin = (req, res, next) => {
+    if (req.user && (req.user.role === 'admin' || req.user.role === 'staff')) {
+        next();
+    } else {
+        return res.status(403).json({ success: false, message: 'Truy cập bị từ chối. Không đủ thẩm quyền thao tác.' });
+    }
+};
+
+module.exports = { verifyToken, isAdmin, isStaffOrAdmin };
+</file>
+
+<file path="middlewares/uploadMiddleware.js">
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Đảm bảo thư mục upload tồn tại
+const uploadDir = path.join(__dirname, '../../public/uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadDir); 
+    },
+    filename: function (req, file, cb) {
+        // Tạo tên file ngẫu nhiên dựa trên thời gian để tránh trùng lặp
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+// Chỉ chấp nhận file ảnh
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+    } else {
+        cb(new Error('Chỉ cho phép tải lên định dạng hình ảnh!'), false);
+    }
+};
+
+const upload = multer({ storage: storage, fileFilter: fileFilter });
+
+module.exports = upload;
+</file>
+
+<file path="models/cartModel.js">
+const pool = require('../config/db');
+
+const Cart = {
+    // Tìm giỏ hàng của người dùng
+    getCartByUserId: async (userId) => {
+        const query = 'SELECT * FROM carts WHERE user_id = $1';
+        const { rows } = await pool.query(query, [userId]);
+        return rows[0];
+    },
+
+    // Tạo giỏ hàng mới nếu chưa có
+    createCart: async (userId) => {
+        const query = 'INSERT INTO carts (user_id) VALUES ($1) RETURNING *';
+        const { rows } = await pool.query(query, [userId]);
+        return rows[0];
+    },
+
+    // Lấy danh sách sản phẩm trong giỏ kèm thông tin chi tiết
+    getCartItems: async (cartId) => {
+        const query = `
+            SELECT ci.id AS cart_item_id, ci.product_id, p.name, p.price, p.image_url, ci.quantity,
+                   COALESCE((SELECT SUM(quantity) FROM inventory_batches WHERE product_id = p.id AND expiration_date > CURRENT_DATE), 0) AS stock
+            FROM cart_items ci
+            JOIN products p ON ci.product_id = p.id
+            WHERE ci.cart_id = $1
+            ORDER BY ci.id ASC
+        `;
+        const { rows } = await pool.query(query, [cartId]);
+        return rows;
+    },
+
+    // Kiểm tra xem sản phẩm đã có trong giỏ chưa
+    checkItemInCart: async (cartId, productId) => {
+        const query = 'SELECT * FROM cart_items WHERE cart_id = $1 AND product_id = $2';
+        const { rows } = await pool.query(query, [cartId, productId]);
+        return rows[0];
+    },
+
+    // Thêm sản phẩm mới vào giỏ
+    addItem: async (cartId, productId, quantity) => {
+        const query = 'INSERT INTO cart_items (cart_id, product_id, quantity) VALUES ($1, $2, $3) RETURNING *';
+        const { rows } = await pool.query(query, [cartId, productId, quantity]);
+        return rows[0];
+    },
+
+    // Cập nhật số lượng nếu sản phẩm đã tồn tại
+    updateItemQuantity: async (cartItemId, quantity) => {
+        const query = 'UPDATE cart_items SET quantity = $1 WHERE id = $2 RETURNING *';
+        const { rows } = await pool.query(query, [quantity, cartItemId]);
+        return rows[0];
+    },
+    
+    // Xóa sản phẩm khỏi giỏ
+    removeItem: async (cartItemId) => {
+        const query = 'DELETE FROM cart_items WHERE id = $1';
+        await pool.query(query, [cartItemId]);
+        return true;
+    }
+};
+
+module.exports = Cart;
+</file>
+
+<file path="models/distributorModel.js">
+const pool = require('../config/db');
+
+const Distributor = {
+    getAllDistributors: async () => {
+        const query = 'SELECT * FROM distributors ORDER BY id DESC';
+        const { rows } = await pool.query(query);
+        return rows;
+    },
+
+    createDistributor: async (data) => {
+        const { name, tax_code, address, phone } = data;
+        const query = `
+            INSERT INTO distributors (name, tax_code, address, phone)
+            VALUES ($1, $2, $3, $4) RETURNING *;
+        `;
+        const { rows } = await pool.query(query, [name, tax_code, address, phone]);
+        return rows[0];
+    },
+
+    updateDistributor: async (id, data) => {
+        const { name, tax_code, address, phone, status } = data;
+        const query = `
+            UPDATE distributors 
+            SET name = COALESCE($1, name),
+                tax_code = COALESCE($2, tax_code),
+                address = COALESCE($3, address),
+                phone = COALESCE($4, phone),
+                status = COALESCE($5, status)
+            WHERE id = $6 RETURNING *;
+        `;
+        const { rows } = await pool.query(query, [name, tax_code, address, phone, status, id]);
+        return rows[0];
+    },
+
+    // Kiểm tra liên kết và xử lý xóa / ngừng hợp tác
+    checkAndDelete: async (id) => {
+        // Kiểm tra xem nhà phân phối có sản phẩm liên kết không
+        const checkQuery = 'SELECT COUNT(*) FROM products WHERE distributor_id = $1';
+        const checkResult = await pool.query(checkQuery, [id]);
+        
+        if (parseInt(checkResult.rows[0].count) > 0) {
+            // Có liên kết -> Chuyển trạng thái sang inactive
+            const updateQuery = "UPDATE distributors SET status = 'inactive' WHERE id = $1 RETURNING *";
+            const { rows } = await pool.query(updateQuery, [id]);
+            return { action: 'deactivated', data: rows[0] };
+        } else {
+            // Không có liên kết -> Xóa cứng
+            const deleteQuery = 'DELETE FROM distributors WHERE id = $1 RETURNING *';
+            const { rows } = await pool.query(deleteQuery, [id]);
+            return { action: 'deleted', data: rows[0] };
+        }
+    }
+};
+
+module.exports = Distributor;
+</file>
+
+<file path="models/inventoryModel.js">
+const pool = require('../config/db');
+
+const Inventory = {
+    getAllBatches: async () => {
+        const query = `
+            SELECT ib.*, p.name AS product_name, sl.zone, sl.shelf, w.name AS warehouse_name 
+            FROM inventory_batches ib
+            JOIN products p ON ib.product_id = p.id
+            LEFT JOIN storage_locations sl ON ib.location_id = sl.id
+            LEFT JOIN warehouses w ON sl.warehouse_id = w.id
+            ORDER BY ib.expiration_date ASC
+        `;
+        const result = await pool.query(query);
+        return result.rows;
+    },
+
+    addBatch: async (data) => {
+        const { product_id, location_id, batch_number, import_date, expiration_date, quantity } = data;
+        const query = `
+            INSERT INTO inventory_batches (product_id, location_id, batch_number, import_date, expiration_date, quantity) 
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
+        `;
+        const result = await pool.query(query, [product_id, location_id, batch_number, import_date, expiration_date, quantity]);
+        return result.rows[0];
+    },
+
+    updateBatch: async (id, data) => {
+        const { location_id, batch_number, import_date, expiration_date, quantity } = data;
+        const query = `
+            UPDATE inventory_batches 
+            SET location_id = $1, batch_number = $2, import_date = $3, expiration_date = $4, quantity = $5
+            WHERE id = $6 RETURNING *
+        `;
+        const result = await pool.query(query, [location_id, batch_number, import_date, expiration_date, quantity, id]);
+        return result.rows[0];
+    },
+
+    deleteBatch: async (id) => {
+        const query = 'DELETE FROM inventory_batches WHERE id = $1 RETURNING *';
+        const result = await pool.query(query, [id]);
+        return result.rows[0];
+    }
+};
+
+module.exports = Inventory;
+</file>
+
+<file path="models/orderModel.js">
+const pool = require('../config/db');
+
+const Order = {
+    // Tạo bản ghi đơn hàng mới và chi tiết sản phẩm (Transaction)
+    createOrder: async (orderData, items) => {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            // 1. Thêm thông tin vào bảng orders
+            const orderQuery = `
+                INSERT INTO orders (user_id, full_name, phone, shipping_address, notes, payment_method, total_amount, status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
+                RETURNING id;
+            `;
+            const orderValues = [
+                orderData.user_id || null, // Nếu có user_id thì lưu, không thì lưu null (khách vãng lai)
+                orderData.full_name, 
+                orderData.phone, 
+                orderData.shipping_address, 
+                orderData.notes || null, 
+                orderData.payment_method, 
+                orderData.total_amount
+            ];
+            const orderResult = await client.query(orderQuery, orderValues);
+            const orderId = orderResult.rows[0].id;
+
+            // 2. Thêm từng sản phẩm vào bảng order_items
+            const itemQuery = `
+                INSERT INTO order_items (order_id, product_id, quantity, price, price_at_purchase)
+                VALUES ($1, $2, $3, $4, $4);
+            `;
+            for (let item of items) {
+                await client.query(itemQuery, [orderId, item.product_id, item.quantity, item.price]);
+            }
+
+            await client.query('COMMIT');
+            return orderId;
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    },
+
+    // Lấy danh sách đơn hàng của một người dùng cụ thể
+    getMyOrders: async (userId) => {
+        const query = 'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC';
+        const { rows } = await pool.query(query, [userId]);
+        return rows;
+    },
+
+    // Lấy chi tiết các sản phẩm bên trong một đơn hàng
+    getOrderDetails: async (orderId) => {
+        const query = `
+            SELECT oi.id AS order_item_id, oi.product_id, p.name, p.image_url, oi.quantity, oi.price_at_purchase
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = $1
+        `;
+        const { rows } = await pool.query(query, [orderId]);
+        return rows;
+    },
+
+    // Lấy tất cả đơn hàng trên hệ thống (Dành cho Admin)
+    getAllOrdersAdmin: async () => {
+        const query = 'SELECT * FROM orders ORDER BY created_at DESC';
+        const { rows } = await pool.query(query);
+        return rows;
+    },
+
+    // Cập nhật trạng thái đơn hàng (Dành cho Admin)
+    updateOrderStatus: async (id, status) => {
+        const query = `
+            UPDATE orders 
+            SET status = $1 
+            WHERE id = $2 
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [status, id]);
+        return result.rows[0];
+    }
+};
+
+module.exports = Order;
+</file>
+
+<file path="models/productModel.js">
+const pool = require('../config/db');
+
+const Product = {
+    getAllProducts: async () => {
+        const query = `
+            SELECT p.*, 
+                   c.name AS category_name, 
+                   d.name AS distributor_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN distributors d ON p.distributor_id = d.id
+            ORDER BY p.created_at DESC
+        `;
+        const result = await pool.query(query);
+        return result.rows;
+    },
+
+    getProductById: async (id) => {
+        const query = `
+            SELECT p.*, 
+                   c.name AS category_name, 
+                   d.name AS distributor_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN distributors d ON p.distributor_id = d.id
+            WHERE p.id = $1
+        `;
+        const result = await pool.query(query, [id]);
+        return result.rows[0];
+    },
+
+    createProduct: async (data) => {
+        const { name, category_id, distributor_id, price, description, instruction, ingredients, image_url } = data;
+        const query = `
+            INSERT INTO products (name, category_id, distributor_id, price, description, instruction, ingredients, image_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
+        `;
+        const values = [
+            name, 
+            category_id || null, 
+            distributor_id || null, 
+            price, 
+            description, 
+            instruction, 
+            ingredients, 
+            image_url
+        ];
+        const { rows } = await pool.query(query, values);
+        return rows[0];
+    },
+
+    updateProduct: async (id, data) => {
+        const { name, category_id, distributor_id, price, image_url, status } = data;
+        
+        const query = `
+            UPDATE products 
+            SET name = $1, 
+                category_id = $2, 
+                distributor_id = $3, 
+                price = $4, 
+                image_url = $5, 
+                status = $6
+            WHERE id = $7 
+            RETURNING *
+        `;
+        const values = [
+            name, 
+            category_id || null, 
+            distributor_id || null, 
+            price, 
+            image_url, 
+            status, 
+            id
+        ];
+        
+        const result = await pool.query(query, values);
+        return result.rows[0];
+    },
+
+    // Ẩn sản phẩm thay vì xóa cứng theo yêu cầu SRS
+    hideProduct: async (id) => {
+        const query = `UPDATE products SET status = 'hidden' WHERE id = $1 RETURNING *;`;
+        const { rows } = await pool.query(query, [id]);
+        return rows[0];
+    }
+};
+
+module.exports = Product;
+</file>
+
+<file path="models/reportModel.js">
+const pool = require('../config/db');
+
+const Report = {
+    // Thống kê tổng quan: Tổng doanh thu và tổng số đơn hàng
+    getRevenueSummary: async (startDate, endDate) => {
+        let query = `
+            SELECT 
+                COUNT(id) AS total_orders, 
+                COALESCE(SUM(total_amount), 0) AS total_revenue
+            FROM orders
+            WHERE order_status = 'completed' OR payment_status = 'paid'
+        `;
+        const params = [];
+
+        // Hỗ trợ lọc theo khoảng thời gian nếu có tham số truyền vào
+        if (startDate && endDate) {
+            query += ` AND created_at >= $1 AND created_at <= $2`;
+            params.push(startDate, endDate);
+        }
+
+        const { rows } = await pool.query(query, params);
+        return rows[0];
+    },
+
+    // Lấy top 5 sản phẩm bán chạy nhất
+    getTopSellingProducts: async () => {
+        const query = `
+            SELECT 
+                p.id, 
+                p.name, 
+                SUM(oi.quantity) AS total_sold
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            JOIN products p ON oi.product_id = p.id
+            WHERE o.order_status = 'completed' OR o.payment_status = 'paid'
+            GROUP BY p.id, p.name
+            ORDER BY total_sold DESC
+            LIMIT 5
+        `;
+        const { rows } = await pool.query(query);
+        return rows;
+    }
+};
+
+module.exports = Report;
+</file>
+
+<file path="models/userModel.js">
+const pool = require('../config/db');
+
+const User = {
+    // Tìm người dùng theo email (Dùng cho đăng nhập và kiểm tra trùng lặp)
+    findByEmail: async (email) => {
+        const query = 'SELECT * FROM users WHERE email = $1';
+        const { rows } = await pool.query(query, [email]);
+        return rows[0];
+    },
+
+    // Tạo tài khoản mới (Hỗ trợ cả User đăng ký và Admin tạo)
+    createUser: async (userData) => {
+        const { full_name, email, phone, role, status } = userData;
+        // Hỗ trợ nhận cả 'password' (từ admin) hoặc 'password_hash' (từ register cũ)
+        const password_hash = userData.password || userData.password_hash; 
+        
+        const query = `
+            INSERT INTO users (full_name, email, password_hash, phone, role, status)
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, full_name, email, role, status;
+        `;
+        const values = [full_name, email, password_hash, phone, role || 'user', status || 'active'];
+        const { rows } = await pool.query(query, values);
+        return rows[0];
+    },
+
+    findById: async (id) => {
+        // Không lấy trường password_hash để bảo mật
+        const query = 'SELECT id, full_name, email, phone, address, role, status FROM users WHERE id = $1';
+        const { rows } = await pool.query(query, [id]);
+        return rows[0];
+    },
+
+    // Cập nhật thông tin cá nhân (Dành cho Khách hàng)
+    updateProfile: async (id, data) => {
+        const { full_name, phone, address } = data;
+        const query = `
+            UPDATE users
+            SET full_name = COALESCE($1, full_name), 
+                phone = COALESCE($2, phone), 
+                address = COALESCE($3, address)
+            WHERE id = $4 
+            RETURNING id, full_name, email, phone, address, role;
+        `;
+        const values = [full_name, phone, address, id];
+        const { rows } = await pool.query(query, values);
+        return rows[0];
+    },
+
+    // Lấy danh sách tất cả người dùng (Dành cho Admin)
+    getAllUsers: async () => {
+        const query = 'SELECT id, full_name, email, phone, address, role, status, created_at FROM users ORDER BY created_at DESC';
+        const { rows } = await pool.query(query);
+        return rows;
+    },
+
+    // Cập nhật toàn bộ thông tin tài khoản (Dành cho Admin)
+    updateUser: async (id, data) => {
+        const { full_name, email, phone, password, role, status } = data;
+        const query = `
+            UPDATE users
+            SET full_name = COALESCE($1, full_name),
+                email = COALESCE($2, email),
+                phone = COALESCE($3, phone),
+                password_hash = COALESCE($4, password_hash),
+                role = COALESCE($5, role),
+                status = COALESCE($6, status)
+            WHERE id = $7
+            RETURNING id, full_name, email, role, status;
+        `;
+        const values = [full_name, email, phone, password, role, status, id];
+        const { rows } = await pool.query(query, values);
+        return rows[0];
+    },
+
+    // Xóa tài khoản (Dành cho Admin)
+    deleteUser: async (id) => {
+        const query = 'DELETE FROM users WHERE id = $1';
+        await pool.query(query, [id]);
+        return true;
+    }
+};
+
+module.exports = User;
+</file>
+
+<file path="routes/authRoutes.js">
+const express = require('express');
+const router = express.Router();
+const authController = require('../controllers/authController');
+
+// Không sử dụng middleware protect ở đây vì người dùng chưa có tài khoản/chưa đăng nhập
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+
+module.exports = router;
+</file>
+
+<file path="routes/cartRoutes.js">
+const express = require('express');
+const router = express.Router();
+const cartController = require('../controllers/cartController');
+const { verifyToken } = require('../middlewares/authMiddleware');
+
+router.get('/', verifyToken, cartController.getCart);
+router.post('/add', verifyToken, cartController.addToCart);
+router.delete('/remove/:id', verifyToken, cartController.removeFromCart);
+
+module.exports = router;
+</file>
+
+<file path="routes/categoryRoutes.js">
+const express = require('express');
+const router = express.Router();
+const { getCategories, createCategory, updateCategory, deleteCategory } = require('../controllers/categoryController');
+const { verifyToken, isStaffOrAdmin } = require('../middlewares/authMiddleware');
+
+// Khách hàng có thể xem danh mục
+router.get('/', getCategories);
+
+// Chỉ Admin/Staff mới được thao tác thay đổi
+router.post('/', verifyToken, isStaffOrAdmin, createCategory);
+router.put('/:id', verifyToken, isStaffOrAdmin, updateCategory);
+router.delete('/:id', verifyToken, isStaffOrAdmin, deleteCategory);
+
+module.exports = router;
+</file>
+
+<file path="routes/dashboardRoutes.js">
+const express = require('express');
+const router = express.Router();
+const dashboardController = require('../controllers/dashboardController');
+
+router.get('/summary', dashboardController.getSummary);
+
+module.exports = router;
+</file>
+
+<file path="routes/distributorRoutes.js">
+const express = require('express');
+const router = express.Router();
+const distributorController = require('../controllers/distributorController');
+const { verifyToken, isStaffOrAdmin } = require('../middlewares/authMiddleware');
+
+// Chỉ Admin/Staff mới được truy cập
+router.get('/', verifyToken, isStaffOrAdmin, distributorController.getDistributors);
+router.post('/', verifyToken, isStaffOrAdmin, distributorController.addDistributor);
+router.put('/:id', verifyToken, isStaffOrAdmin, distributorController.editDistributor);
+router.delete('/:id', verifyToken, isStaffOrAdmin, distributorController.removeDistributor);
+
+module.exports = router;
+</file>
+
+<file path="routes/inventoryRoutes.js">
+const express = require('express');
+const router = express.Router();
+const inventoryController = require('../controllers/inventoryController');
+const { verifyToken, isStaffOrAdmin } = require('../middlewares/authMiddleware');
+
+// Chỉ Admin/Staff đã đăng nhập mới được truy cập các Route này
+router.get('/', verifyToken, isStaffOrAdmin, inventoryController.getInventory);
+router.post('/import', verifyToken, isStaffOrAdmin, inventoryController.importBatch);
+router.put('/:id', verifyToken, isStaffOrAdmin, inventoryController.updateBatch);
+router.delete('/:id', verifyToken, isStaffOrAdmin, inventoryController.deleteBatch);
+
+module.exports = router;
+</file>
+
+<file path="routes/locationRoutes.js">
+const express = require('express');
+const router = express.Router();
+const { getLocations, createLocation, updateLocation, deleteLocation } = require('../controllers/locationController');
+
+router.get('/', getLocations);
+router.post('/', createLocation);
+router.put('/:id', updateLocation);
+router.delete('/:id', deleteLocation);
+
+module.exports = router;
+</file>
+
+<file path="routes/orderRoutes.js">
+const express = require('express');
+const router = express.Router();
+const orderController = require('../controllers/orderController');
+const { verifyToken, isStaffOrAdmin } = require('../middlewares/authMiddleware');
+
+// --- ROUTE DÀNH CHO KHÁCH HÀNG ---
+// Thực hiện đặt hàng (Khách vãng lai có thể đặt)
+router.post('/', orderController.placeOrder);
+
+// Xem lịch sử mua hàng (Chỉ dành cho tài khoản đã đăng nhập)
+router.get('/me', verifyToken, orderController.getMyOrders);
+
+// --- ROUTE DÀNH CHO ADMIN & NHÂN VIÊN ---
+// Xem toàn bộ đơn hàng của hệ thống và Cập nhật trạng thái
+router.get('/admin', verifyToken, isStaffOrAdmin, orderController.getAllOrdersAdmin);
+router.put('/admin/:id/status', verifyToken, isStaffOrAdmin, orderController.updateOrderStatusAdmin);
+
+module.exports = router;
+</file>
+
+<file path="routes/productRoutes.js">
+const express = require('express');
+const router = express.Router();
+const productController = require('../controllers/productController');
+const { verifyToken, isStaffOrAdmin } = require('../middlewares/authMiddleware');
+const upload = require('../middlewares/uploadMiddleware');
+
+// Khách hàng vãng lai có thể xem danh sách và chi tiết sản phẩm
+router.get('/', productController.getAllProducts);
+router.get('/:id', productController.getProductById);
+
+// Chỉ Admin và Nhân viên mới được thêm/sửa/xóa
+router.post('/', verifyToken, isStaffOrAdmin, upload.single('image'), productController.createProduct);
+router.put('/:id', verifyToken, isStaffOrAdmin,upload.single('image'), productController.updateProduct);
+router.delete('/:id', verifyToken, isStaffOrAdmin, productController.deleteProduct);
+
+module.exports = router;
+</file>
+
+<file path="routes/reportRoutes.js">
+const express = require('express');
+const router = express.Router();
+const reportController = require('../controllers/reportController');
+const { verifyToken, isStaffOrAdmin } = require('../middlewares/authMiddleware');
+
+// Chỉ Admin/Staff mới được truy cập dữ liệu thống kê
+router.get('/', verifyToken, isStaffOrAdmin, reportController.getDashboardStats);
+
+module.exports = router;
+</file>
+
+<file path="routes/userRoutes.js">
+const express = require('express');
+const router = express.Router();
+const userController = require('../controllers/userController');
+
+// Import middleware xác thực của hệ thống (điều chỉnh đường dẫn thư mục nếu cần thiết)
+const { verifyToken, isAdmin } = require('../middlewares/authMiddleware'); 
+
+// ==========================================================
+// ĐƯỜNG DẪN DÀNH CHO KHÁCH HÀNG (Yêu cầu phải đăng nhập)
+// ==========================================================
+// Chèn verifyToken vào trước hàm xử lý của Controller
+router.get('/profile', verifyToken, userController.getProfile);
+router.put('/profile', verifyToken, userController.updateProfile);
+
+// ==========================================================
+// ĐƯỜNG DẪN DÀNH CHO ADMIN (Yêu cầu đăng nhập và có quyền admin)
+// ==========================================================
+router.get('/', verifyToken, isAdmin, userController.getAllUsers);
+router.post('/', verifyToken, isAdmin, userController.createUser);
+router.put('/:id', verifyToken, isAdmin, userController.updateUser);
+router.delete('/:id', verifyToken, isAdmin, userController.deleteUser);
+
+module.exports = router;
+</file>
+
+<file path="routes/warehouseRoutes.js">
+const express = require('express');
+const router = express.Router();
+const { getWarehouses, createWarehouse, updateWarehouse, deleteWarehouse } = require('../controllers/warehouseController');
+
+// Cần thêm middleware xác thực Token (protect/isAdmin) vào đây sau khi hoàn thiện luồng
+router.get('/', getWarehouses);
+router.post('/', createWarehouse);
+router.put('/:id', updateWarehouse);
+router.delete('/:id', deleteWarehouse);
+
+module.exports = router;
+</file>
+
+</files>
