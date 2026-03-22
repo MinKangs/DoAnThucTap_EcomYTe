@@ -5,7 +5,7 @@ import {
     BsBoxSeam, BsGrid, BsCartCheck, BsArchive, 
     BsBoxArrowInRight, BsGeoAlt, BsTruck, 
     BsBuilding, BsPeople, BsExclamationTriangleFill,
-    BsHourglassSplit
+    BsHourglassSplit, BsXOctagonFill, BsExclamationCircleFill
 } from 'react-icons/bs';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -20,7 +20,9 @@ const AdminDashboard = () => {
         totalUsers: 0,
         totalOrders: 0,
         expiringBatches: 0,
-        pendingOrders: 0
+        pendingOrders: 0,
+        outOfStockCount: 0,
+        lowStockCount: 0
     });
     
     const [loading, setLoading] = useState(true);
@@ -63,7 +65,8 @@ const AdminDashboard = () => {
         <div className="admin-page-container p-4">
             <h3 className="fw-bold mb-4 text-dark">Bảng điều khiển</h3>
 
-            <Row className="g-4 mb-5">
+            {/* Khu vực 1: Thống kê chung (4 cột) */}
+            <Row className="g-4 mb-4">
                 <Col lg={3} md={6}>
                     <Card className="border-0 shadow-sm dashboard-stat-card h-100">
                         <Card.Body className="d-flex align-items-center p-4">
@@ -120,7 +123,11 @@ const AdminDashboard = () => {
                         </Card>
                     </Link>
                 </Col>
-                <Col lg={3} md={6}>
+            </Row>
+
+            {/* Khu vực 2: Cảnh báo hàng hóa (3 cột) */}
+            <Row className="g-4 mb-5">
+                <Col lg={4} md={12}>
                     <Link to="/admin/inventory" className="text-decoration-none">
                         <Card className="border-0 shadow-sm dashboard-stat-card h-100 bg-warning bg-opacity-10 border-warning border-start border-4">
                             <Card.Body className="d-flex align-items-center p-4">
@@ -131,6 +138,44 @@ const AdminDashboard = () => {
                                     <h6 className="text-dark mb-1 fw-bold">Cảnh báo hạn dùng</h6>
                                     <h3 className="mb-0 fw-bold text-danger">
                                         {stats.expiringBatches || 0} <span className="fs-6 fw-normal text-dark">lô hàng</span>
+                                    </h3>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Link>
+                </Col>
+                
+                {/* Thẻ Cảnh báo Gần hết hàng */}
+                <Col lg={4} md={6}>
+                    <Link to="/admin/products" className="text-decoration-none">
+                        <Card className="border-0 shadow-sm dashboard-stat-card h-100 bg-orange-light border-orange border-start border-4">
+                            <Card.Body className="d-flex align-items-center p-4">
+                                <div className="p-3 me-3 d-flex align-items-center justify-content-center">
+                                    <BsExclamationCircleFill size={32} className="text-orange" />
+                                </div>
+                                <div>
+                                    <h6 className="text-dark mb-1 fw-bold">Gần hết hàng</h6>
+                                    <h3 className="mb-0 fw-bold text-orange">
+                                        {stats.lowStockCount || 0} <span className="fs-6 fw-normal text-dark">sản phẩm</span>
+                                    </h3>
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Link>
+                </Col>
+
+                {/* Thẻ Cảnh báo Hết hàng */}
+                <Col lg={4} md={6}>
+                    <Link to="/admin/products" className="text-decoration-none">
+                        <Card className="border-0 shadow-sm dashboard-stat-card h-100 bg-danger bg-opacity-10 border-danger border-start border-4">
+                            <Card.Body className="d-flex align-items-center p-4">
+                                <div className="p-3 me-3 d-flex align-items-center justify-content-center">
+                                    <BsXOctagonFill size={32} className="text-danger" />
+                                </div>
+                                <div>
+                                    <h6 className="text-dark mb-1 fw-bold">Hết hàng</h6>
+                                    <h3 className="mb-0 fw-bold text-danger">
+                                        {stats.outOfStockCount || 0} <span className="fs-6 fw-normal text-dark">sản phẩm</span>
                                     </h3>
                                 </div>
                             </Card.Body>

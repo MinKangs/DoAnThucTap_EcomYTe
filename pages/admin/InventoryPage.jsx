@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Spinner, Alert, Badge, Row, Col, InputGroup } from 'react-bootstrap';
-import { BsSearch, BsPlusLg, BsPencilSquare, BsTrash, BsFilterRight, BsBoxArrowInRight } from 'react-icons/bs';
+import { Link } from 'react-router-dom';
+import { BsSearch, BsPlusLg, BsPencilSquare, BsTrash, BsFilterRight, BsBoxArrowInRight, BsClockHistory } from 'react-icons/bs';
 import api from '../../services/api';
-import './AdminCommon.css'; // Kế thừa CSS dùng chung
+import './AdminCommon.css';
 
 const InventoryPage = () => {
     // 1. GIỮ NGUYÊN STATE GỐC
@@ -154,6 +155,7 @@ const InventoryPage = () => {
     return (
         <div className="admin-page-container">
             {/* Tiêu đề trang */}
+            {/* Tiêu đề trang */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 className="page-header-title m-0">Quản lý Nhập kho & Lô hàng</h2>
@@ -163,9 +165,16 @@ const InventoryPage = () => {
                             : `Có tất cả ${batches.length} lô hàng trong hệ thống`}
                     </p>
                 </div>
-                <Button variant="success" className="d-flex align-items-center gap-2 px-4 shadow-sm fw-bold" onClick={handleShowAdd}>
-                    <BsBoxArrowInRight size={18} /> Nhập kho mới
-                </Button>
+                
+                {/* LỊCH SỬ NHẬP KHO*/}
+                <div className="d-flex gap-3">
+                    <Button as={Link} to="/admin/inventory-history" variant="outline-primary" className="d-flex align-items-center gap-2 px-3 shadow-sm fw-bold bg-white border-2">
+                        <BsClockHistory size={18} /> Lịch sử xuất/nhập
+                    </Button>
+                    <Button variant="success" className="d-flex align-items-center gap-2 px-4 shadow-sm fw-bold" onClick={handleShowAdd}>
+                        <BsBoxArrowInRight size={18} /> Nhập kho mới
+                    </Button>
+                </div>
             </div>
 
             {/* Thanh công cụ Tìm kiếm & Lọc */}

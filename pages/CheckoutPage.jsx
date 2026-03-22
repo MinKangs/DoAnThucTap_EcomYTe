@@ -6,6 +6,13 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './CheckoutPage.css';
 
+const backendUrl = 'http://localhost:5000';
+const getImageUrl = (url) => {
+    if (!url) return 'https://via.placeholder.com/200?text=No+Image';
+    if (url.startsWith('http')) return url;
+    return `${backendUrl}${url}`;
+};
+
 const CheckoutPage = () => {
     const { cartItems, cartTotal, clearCart } = useCart();
     const navigate = useNavigate();
@@ -164,7 +171,7 @@ const CheckoutPage = () => {
                                 {cartItems.map(item => (
                                     <div key={item.id} className="d-flex align-items-center justify-content-between mb-3">
                                         <div className="d-flex align-items-center gap-3">
-                                            <img src={item.image_url || 'https://via.placeholder.com/60'} alt={item.name} className="summary-item-img" />
+                                            <img src={getImageUrl(item.image_url)} alt={item.name} className="summary-item-img" />
                                             <div>
                                                 <div className="fw-bold" style={{ fontSize: '0.9rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {item.name}

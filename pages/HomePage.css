@@ -76,3 +76,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* Tùy chỉnh Banner Slider */
+.home-banner-slider {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.home-banner-img {
+    width: 100%;
+    height: 400px; /* tăng giảm chiều cao này tùy ý (ví dụ: 450px, 500px) */
+    object-fit: cover; 
+}

@@ -5,6 +5,14 @@ import { BsTrash } from 'react-icons/bs';
 import { useCart } from '../context/CartContext';
 import './CartPage.css';
 
+
+const backendUrl = 'http://localhost:5000';
+const getImageUrl = (url) => {
+    if (!url) return 'https://via.placeholder.com/200?text=No+Image';
+    if (url.startsWith('http')) return url;
+    return `${backendUrl}${url}`;
+};
+
 const CartPage = () => {
     const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
     const navigate = useNavigate();
@@ -49,7 +57,7 @@ const CartPage = () => {
                                         <td className="px-4 py-3">
                                             <div className="d-flex align-items-center gap-3">
                                                 <img 
-                                                    src={item.image_url || 'https://via.placeholder.com/80'} 
+                                                    src={getImageUrl(item.image_url)} 
                                                     alt={item.name} 
                                                     className="cart-item-img"
                                                 />

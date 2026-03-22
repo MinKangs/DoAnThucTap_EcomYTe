@@ -22,6 +22,7 @@ import ProductPage from './pages/admin/ProductPage';
 import InventoryPage from './pages/admin/InventoryPage';
 import OrderPage from './pages/admin/OrderPage';
 import UserPage from './pages/admin/UserPage';
+import InventoryHistoryPage from './pages/admin/InventoryHistoryPage';
 
 
 
@@ -54,6 +55,7 @@ function App() {
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="orders" element={<OrderPage />} />
           <Route path="users" element={<UserPage />} />
+          <Route path="inventory-history" element={<InventoryHistoryPage />} />
         </Route>
       </Route>
     </Routes>

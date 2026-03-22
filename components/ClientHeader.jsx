@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-// Bổ sung Form, Button vào đây
 import { Container, Nav, Navbar, NavDropdown, Badge, Form, Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-// Bổ sung BsSearch vào đây
 import { BsCart3, BsPersonCircle, BsSearch } from 'react-icons/bs';
+import logoImg from '../assets/logo.png'; 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,9 +27,15 @@ const ClientHeader = () => {
     return (
         <Navbar expand="lg" className="py-3" style={{ backgroundColor: 'var(--primary-green)' }} sticky="top">
             <Container>
-                <Navbar.Brand as={Link} to="/" className="d-flex align-items-center text-white fw-bold fs-4">
-                    <img src="https://via.placeholder.com/40" alt="Logo" className="me-2 rounded-circle" />
-                    Nhà Thuốc
+                <Navbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2 py-1">
+                    <div className="header-logo-container">
+                        <img 
+                            src={logoImg} 
+                            alt="Logo Nhà Thuốc" 
+                            className="header-logo-img"
+                        />
+                    </div>
+                    <span className="fw-bold text-white d-none d-md-block fs-5 ms-2">MEDIC-SHOP</span>
                 </Navbar.Brand>
                 <Navbar.Toggle aria-controls="basic-navbar-nav" className="border-white" />
                 <Navbar.Collapse id="basic-navbar-nav">

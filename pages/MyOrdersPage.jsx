@@ -3,6 +3,14 @@ import { Container, Table, Badge, Card, Spinner, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 
+
+const backendUrl = 'http://localhost:5000';
+const getImageUrl = (url) => {
+    if (!url) return 'https://via.placeholder.com/200?text=No+Image';
+    if (url.startsWith('http')) return url;
+    return `${backendUrl}${url}`;
+};
+
 const MyOrdersPage = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -77,7 +85,7 @@ const MyOrdersPage = () => {
                                         <tr key={item.order_item_id} className="border-bottom">
                                             <td width="80">
                                                 <img 
-                                                    src={item.image_url || 'https://via.placeholder.com/80'} 
+                                                    src={getImageUrl(item.image_url)} 
                                                     alt={item.name} 
                                                     className="img-fluid rounded"
                                                     style={{ width: '60px', height: '60px', objectFit: 'cover' }}
