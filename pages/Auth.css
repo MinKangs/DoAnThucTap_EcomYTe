@@ -1,62 +1,69 @@
-/* Bao bọc toàn trang, thiết lập nền màu xám nhạt để làm nổi bật form trắng */
-.auth-wrapper {
-    background-color: #f4f7f6;
-    min-height: calc(100vh - 80px); /* Trừ đi chiều cao của Header */
+/* src/pages/Auth.css */
+
+.auth-background {
+    min-height: 100vh;
+    /* Dải màu xanh nhạt hơn: Từ xanh mint đến xanh rêu nhạt */
+    background: linear-gradient(135deg, #a8e6cf 0%, #38a169 100%);
     display: flex;
     align-items: center;
+    justify-content: center;
+    padding: 2rem 15px;
 }
 
-/* Định dạng thẻ Card chứa form */
 .auth-card {
-    border: 1px solid #e0e6e3;
-    border-radius: 12px !important; /* Bo góc mềm mại */
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04) !important; /* Đổ bóng nhẹ */
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15); /* Giảm độ đậm của bóng mờ */
+    background: #ffffff; 
+    overflow: hidden;
 }
 
-/* Tiêu đề form */
-.auth-card h3 {
-    color: var(--primary-green, #198754);
-    letter-spacing: 0.5px;
+.auth-card-header {
+    background-color: transparent;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 2rem 1.5rem 1.5rem;
+    text-align: center;
 }
 
-/* Hiệu ứng khi focus vào ô nhập liệu */
+.auth-icon-wrapper {
+    width: 64px;
+    height: 64px;
+    background: #e6fcf5; /* Nền xanh siêu nhạt cho icon */
+    color: #20c997; /* Màu xanh lá đặc trưng y tế */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px; /* Chỉnh lại margin cho cân đối */
+}
+
+/* Tùy chỉnh viền và xử lý lỗi bo góc của InputGroup */
+.auth-card .input-group-text {
+    background-color: #ffffff;
+    border-right: none !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+.auth-card .form-control {
+    border-left: none !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+/* Xử lý hiệu ứng khi focus (nhấn vào ô nhập liệu) */
 .auth-card .form-control:focus {
-    border-color: var(--primary-green, #198754);
-    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.15);
-    border-left-color: transparent; /* Giấu viền trái để nối liền với icon */
+    box-shadow: none; /* Bỏ shadow mặc định của control để dùng shadow của cả group */
+    border-color: #38a169;
 }
 
-/* Định dạng phần viền của Icon bên trái ô input */
-.auth-card .input-group-text.auth-icon {
-    border-right-color: transparent; /* Giấu viền phải để nối liền với input */
-    color: #6c757d;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+.auth-card .input-group:focus-within .input-group-text,
+.auth-card .input-group:focus-within .form-control {
+    border-color: #38a169;
 }
 
-/* Đổi màu viền của Icon khi thẻ input bên cạnh được focus */
-.auth-card .input-group:focus-within .auth-icon {
-    border-color: var(--primary-green, #198754);
-    color: var(--primary-green, #198754);
-}
-
-/* Loại bỏ viền trái của input mặc định trong InputGroup */
-.auth-card .input-group .form-control {
-    border-left-color: transparent;
-}
-
-/* Nút bấm Submit */
-.auth-card button[type="submit"] {
-    transition: all 0.3s ease;
-}
-
-.auth-card button[type="submit"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);
-}
-
-/* Text label của Form */
-.auth-card .form-label {
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: #333;
+/* Hiển thị viền shadow bao quanh toàn bộ InputGroup khi focus */
+.auth-card .input-group:focus-within {
+    box-shadow: 0 0 0 0.25rem rgba(56, 161, 105, 0.25);
+    border-radius: 0.375rem;
 }

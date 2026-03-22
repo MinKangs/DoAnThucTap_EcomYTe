@@ -45,7 +45,7 @@ const ClientFooter = () => {
                         <Col lg={4} className="d-none d-lg-block text-center">
                             {/* Hình ảnh gia đình minh họa */}
                             <img 
-                                src="https://via.placeholder.com/350x150/f4fbf7/00a651?text=Hinh+Minh+Hoa+Gia+Dinh" 
+                                src="" 
                                 alt="Family Illustration" 
                                 style={{ maxWidth: '100%', height: 'auto' }} 
                             />
@@ -54,24 +54,24 @@ const ClientFooter = () => {
                 </Container>
             </div>
 
-            {/* Phần 2: Mạng xã hội & Chứng nhận (Đã bỏ dải link văn bản) */}
+            {/* Phần 2: Mạng xã hội & Chứng nhận */}
             <div className="py-4">
                 <Container>
                     <Row>
                         <Col md={6} className="mb-4 mb-md-0">
                             <h6 className="fw-bold mb-3 text-uppercase">Kết nối với chúng tôi</h6>
                             <div className="d-flex">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Zalo_Logo.svg/512px-Zalo_Logo.svg.png" alt="Zalo" className="social-icon" />
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Facebook_Logo_%282019%29.png/1024px-Facebook_Logo_%282019%29.png" alt="Facebook" className="social-icon" />
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/1024px-YouTube_full-color_icon_%282017%29.svg.png" alt="YouTube" className="social-icon" />
+                                <img src="" alt="Zalo" className="social-icon" />
+                                <img src="" alt="Facebook" className="social-icon" />
+                                <img src="" alt="YouTube" className="social-icon" />
                             </div>
                         </Col>
                         <Col md={6}>
                             <h6 className="fw-bold mb-3 text-uppercase">Chứng nhận bởi</h6>
                             <div className="d-flex align-items-center">
                                 {/* Dùng logo mẫu, có thể thay bằng link thật sau */}
-                                <img src="https://via.placeholder.com/120x40/ffffff/004d99?text=Bo+Cong+Thuong" alt="Bộ Công Thương" className="cert-icon" />
-                                <img src="https://images.dmca.com/Badges/dmca_protected_sml_120n.png?ID=b722d71b-7ab6-47c3-88bc-9f9f9bc5e933" alt="DMCA Protected" className="cert-icon" />
+                                <img src="" alt="Bộ Công Thương" className="cert-icon" />
+                                <img src="" alt="DMCA Protected" className="cert-icon" />
                             </div>
                         </Col>
                     </Row>

@@ -71,8 +71,8 @@ const ClientHeader = () => {
                                 id="user-nav-dropdown"
                                 align="end"
                             >
-                                {user.role === 'admin' && (
-                                    <NavDropdown.Item as={Link} to="/admin">Trang Quản Trị</NavDropdown.Item>
+                                {(user?.role === 'admin' || user?.role === 'staff') && (
+                                <NavDropdown.Item as={Link} to="/admin">Trang Quản Trị</NavDropdown.Item>
                                 )}
                                 <NavDropdown.Item as={Link} to="/profile">Hồ sơ cá nhân</NavDropdown.Item>
                                 <NavDropdown.Item as={Link} to="/my-orders">Lịch sử đơn hàng</NavDropdown.Item>

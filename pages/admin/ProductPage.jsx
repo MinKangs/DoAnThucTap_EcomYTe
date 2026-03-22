@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Spinner, Alert, Badge, Row, Col } from 'react-bootstrap';
+import { Table, Button, Modal, Form, Spinner, Badge, Row, Col, InputGroup } from 'react-bootstrap';
+import { BsSearch, BsPlusLg, BsPencilSquare, BsTrash, BsFilterRight } from 'react-icons/bs';
 import api from '../../services/api';
-import './ProductPage.css';
+import './AdminCommon.css';
 
 const ProductPage = () => {
     const [products, setProducts] = useState([]);
@@ -10,16 +11,25 @@ const ProductPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     
+    // State cho tìm kiếm và bộ lọc
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+    
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    
+    // Khai báo formData đầy đủ các trường, khởi tạo bằng chuỗi rỗng để tránh lỗi React Uncontrolled
     const [formData, setFormData] = useState({
         name: '',
         category_id: '',
         distributor_id: '',
         price: '',
-        image_url: '',
         status: 'active'
     });
+    
+    const [imageFile, setImageFile] = useState(null);
+    const [previewImage, setPreviewImage] = useState(null); // State chứa link ảnh để hiển thị xem trước
 
     const fetchData = async () => {
         setLoading(true);
@@ -45,10 +55,26 @@ const ProductPage = () => {
         fetchData();
     }, []);
 
+    const isFiltering = searchTerm !== '' || filterCategory !== '' || filterStatus !== '';
+
+    const filteredProducts = products.filter(p => {
+        const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchCategory = filterCategory === '' || p.category_id?.toString() === filterCategory;
+        const matchStatus = filterStatus === '' 
+            ? true 
+            : filterStatus === 'active' 
+                ? p.status === 'active' 
+                : p.status !== 'active';
+
+        return matchSearch && matchCategory && matchStatus;
+    });
+
     const handleClose = () => {
         setShowModal(false);
         setEditingId(null);
-        setFormData({ name: '', category_id: '', distributor_id: '', price: '', image_url: '', status: 'active' });
+        setFormData({ name: '', category_id: '', distributor_id: '', price: '', status: 'active' });
+        setImageFile(null);
+        setPreviewImage(null);
     };
 
     const handleShowAdd = () => {
@@ -58,22 +84,25 @@ const ProductPage = () => {
             category_id: categories.length > 0 ? categories[0].id : '', 
             distributor_id: distributors.length > 0 ? distributors[0].id : '', 
             price: '', 
-            image_url: '', 
             status: 'active' 
         });
+        setImageFile(null);
+        setPreviewImage(null);
         setShowModal(true);
     };
 
     const handleShowEdit = (prod) => {
         setEditingId(prod.id);
         setFormData({
-            name: prod.name,
+            name: prod.name || '',
             category_id: prod.category_id || '',
             distributor_id: prod.distributor_id || '',
-            price: prod.price,
-            image_url: prod.image_url || '',
+            price: prod.price || '',
             status: prod.status || 'active'
         });
+        setImageFile(null);
+        // Nếu sản phẩm đang sửa có sẵn ảnh cũ, thì hiển thị nó lên
+        setPreviewImage(prod.image_url || null); 
         setShowModal(true);
     };
 
@@ -81,16 +110,43 @@ const ProductPage = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    // Xử lý sự kiện khi chọn file
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImageFile(file);
+            setPreviewImage(URL.createObjectURL(file)); // Tạo link tạm để xem trước ảnh
+        } else {
+            setImageFile(null);
+            setPreviewImage(null);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        const dataToSend = new FormData();
+        dataToSend.append('name', formData.name);
+        dataToSend.append('category_id', formData.category_id);
+        dataToSend.append('distributor_id', formData.distributor_id);
+        dataToSend.append('price', formData.price);
+        dataToSend.append('status', formData.status);
+        
+        if (imageFile) {
+            dataToSend.append('image', imageFile);
+        }
+
         try {
             if (editingId) {
-                await api.put(`/products/${editingId}`, formData);
+                // Đang sửa sản phẩm cũ
+                await api.put(`/products/${editingId}`, dataToSend);
             } else {
-                await api.post('/products', formData);
+                // Thêm sản phẩm mới
+                await api.post('/products', dataToSend);
             }
-            fetchData(); 
-            handleClose();
+            
+            fetchData(); // Load lại bảng
+            handleClose(); // Đóng modal và reset
         } catch (err) {
             alert(err.response?.data?.message || 'Đã xảy ra lỗi khi lưu thông tin.');
         }
@@ -107,53 +163,105 @@ const ProductPage = () => {
         }
     };
 
-    if (loading) return <Spinner animation="border" variant="primary" className="m-4" />;
-    if (error) return <Alert variant="danger" className="m-4">{error}</Alert>;
+    if (loading) return <div className="text-center py-5"><Spinner animation="border" variant="success" /></div>;
 
     return (
-        <div className="product-container">
+        <div className="admin-page-container">
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h3 className="m-0">Quản lý Sản phẩm</h3>
-                <Button variant="primary" onClick={handleShowAdd}>+ Thêm sản phẩm</Button>
+                <div>
+                    <h2 className="page-header-title m-0">Quản lý Sản phẩm</h2>
+                    <p className="text-muted small m-0 mt-1">
+                        {isFiltering 
+                            ? `Tìm thấy ${filteredProducts.length} kết quả phù hợp` 
+                            : `Tổng cộng ${products.length} sản phẩm trong hệ thống`}
+                    </p>
+                </div>
+                <Button variant="success" className="d-flex align-items-center gap-2 px-4 shadow-sm fw-bold" onClick={handleShowAdd}>
+                    <BsPlusLg /> Thêm sản phẩm
+                </Button>
             </div>
 
-            <Table responsive hover bordered className="align-middle">
-                <thead className="table-light">
+            <div className="table-toolbar">
+                <Row className="g-3 align-items-center">
+                    <Col md={5}>
+                        <InputGroup className="shadow-sm">
+                            <Form.Control 
+                                placeholder="Nhập tên sản phẩm để tìm kiếm..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="border-end-0"
+                            />
+                            <Button variant="success" className="d-flex align-items-center px-3 z-0">
+                                <BsSearch size={16} />
+                            </Button>
+                        </InputGroup>
+                    </Col>
+                    <Col md={3}>
+                        <Form.Select className="shadow-sm border-0" value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+                            <option value="">Tất cả danh mục</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </Form.Select>
+                    </Col>
+                    <Col md={3}>
+                        <Form.Select className="shadow-sm border-0" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="active">Đang hoạt động</option>
+                            <option value="inactive">Đã ẩn / Ngừng bán</option>
+                        </Form.Select>
+                    </Col>
+                    <Col md={1} className="d-flex justify-content-end">
+                        <BsFilterRight size={28} className="text-secondary" title="Công cụ lọc" />
+                    </Col>
+                </Row>
+            </div>
+
+            <Table responsive hover className="custom-table border-0 shadow-sm">
+                <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Hình ảnh</th>
-                        <th>Tên sản phẩm</th>
+                        <th style={{ width: '80px' }} className="ps-4">Ảnh</th>
+                        <th>Thông tin sản phẩm</th>
                         <th>Danh mục</th>
                         <th>Giá bán</th>
                         <th>Trạng thái</th>
-                        <th className="text-center">Thao tác</th>
+                        <th className="text-center pe-4">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {products.length === 0 ? (
-                        <tr><td colSpan="7" className="text-center">Chưa có dữ liệu</td></tr>
+                    {filteredProducts.length === 0 ? (
+                        <tr><td colSpan="6" className="text-center py-5 text-muted">Không tìm thấy sản phẩm nào khớp với điều kiện lọc</td></tr>
                     ) : (
-                        products.map(p => (
+                        filteredProducts.map(p => (
                             <tr key={p.id}>
-                                <td>{p.id}</td>
-                                <td>
-                                    {p.image_url ? (
-                                        <img src={p.image_url} alt={p.name} className="product-img-preview" />
-                                    ) : (
-                                        <div className="product-img-preview bg-light d-flex align-items-center justify-content-center text-muted" style={{fontSize: '10px'}}>No Image</div>
-                                    )}
+                                <td className="ps-4">
+                                    <img 
+                                        src={p.image_url || 'https://via.placeholder.com/50'} 
+                                        alt={p.name} 
+                                        className="rounded shadow-sm border"
+                                        style={{ width: '45px', height: '45px', objectFit: 'cover' }}
+                                    />
                                 </td>
-                                <td><strong>{p.name}</strong></td>
-                                <td>{p.category_name || 'Không có'}</td>
-                                <td>{Number(p.price).toLocaleString('vi-VN')} đ</td>
                                 <td>
-                                    <Badge bg={p.status === 'active' ? 'success' : 'secondary'}>
+                                    <div className="fw-bold text-dark">{p.name}</div>
+                                    <small className="text-muted">Mã SP: #{p.id}</small>
+                                </td>
+                                <td>{p.category_name || <span className="text-muted small">Chưa phân loại</span>}</td>
+                                <td>
+                                    <span className="fw-bold text-danger">
+                                        {Number(p.price).toLocaleString('vi-VN')} đ
+                                    </span>
+                                </td>
+                                <td>
+                                    <Badge bg={p.status === 'active' ? 'success' : 'secondary'} className="px-3 py-2 fw-medium">
                                         {p.status === 'active' ? 'Hoạt động' : 'Đã ẩn'}
                                     </Badge>
                                 </td>
-                                <td className="text-center">
-                                    <Button variant="outline-info" size="sm" className="me-2" onClick={() => handleShowEdit(p)}>Sửa</Button>
-                                    <Button variant="outline-danger" size="sm" onClick={() => handleDelete(p.id)}>Ẩn/Xóa</Button>
+                                <td className="text-center pe-4">
+                                    <Button variant="light" size="sm" className="me-2 text-primary shadow-sm btn-icon border" onClick={() => handleShowEdit(p)}>
+                                        <BsPencilSquare size={16} />
+                                    </Button>
+                                    <Button variant="light" size="sm" className="text-danger shadow-sm btn-icon border" onClick={() => handleDelete(p.id)}>
+                                        <BsTrash size={16} />
+                                    </Button>
                                 </td>
                             </tr>
                         ))
@@ -161,22 +269,22 @@ const ProductPage = () => {
                 </tbody>
             </Table>
 
-            <Modal show={showModal} onHide={handleClose} backdrop="static" size="lg">
-                <Modal.Header closeButton>
-                    <Modal.Title>{editingId ? 'Cập nhật Sản phẩm' : 'Thêm Sản phẩm mới'}</Modal.Title>
+            <Modal show={showModal} onHide={handleClose} backdrop="static" size="lg" className="custom-modal" centered>
+                <Modal.Header closeButton className="px-4">
+                    <Modal.Title className="fw-bold fs-5">{editingId ? 'Cập nhật Sản phẩm' : 'Thêm Sản phẩm mới'}</Modal.Title>
                 </Modal.Header>
                 <Form onSubmit={handleSubmit}>
-                    <Modal.Body>
-                        <Row>
+                    <Modal.Body className="p-4">
+                        <Row className="g-3">
                             <Col md={12}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Tên sản phẩm <span className="text-danger">*</span></Form.Label>
-                                    <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required />
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Tên sản phẩm <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required placeholder="Ví dụ: Vitamin C 500mg" />
                                 </Form.Group>
                             </Col>
                             <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Danh mục</Form.Label>
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Danh mục</Form.Label>
                                     <Form.Select name="category_id" value={formData.category_id} onChange={handleChange}>
                                         <option value="">-- Chọn danh mục --</option>
                                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -184,8 +292,8 @@ const ProductPage = () => {
                                 </Form.Group>
                             </Col>
                             <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Nhà phân phối</Form.Label>
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Nhà phân phối</Form.Label>
                                     <Form.Select name="distributor_id" value={formData.distributor_id} onChange={handleChange}>
                                         <option value="">-- Chọn nhà phân phối --</option>
                                         {distributors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -193,31 +301,39 @@ const ProductPage = () => {
                                 </Form.Group>
                             </Col>
                             <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Giá bán (VNĐ) <span className="text-danger">*</span></Form.Label>
-                                    <Form.Control type="number" name="price" value={formData.price} onChange={handleChange} required min="0" />
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Giá bán (VNĐ) <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="number" name="price" value={formData.price} onChange={handleChange} required min="0" placeholder="0" />
                                 </Form.Group>
                             </Col>
                             <Col md={6}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>Trạng thái</Form.Label>
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Trạng thái kinh doanh</Form.Label>
                                     <Form.Select name="status" value={formData.status} onChange={handleChange}>
-                                        <option value="active">Hoạt động</option>
-                                        <option value="inactive">Đã ẩn / Ngừng bán</option>
+                                        <option value="active">Đang hoạt động</option>
+                                        <option value="inactive">Ngừng bán / Đã ẩn</option>
                                     </Form.Select>
                                 </Form.Group>
                             </Col>
                             <Col md={12}>
-                                <Form.Group className="mb-3">
-                                    <Form.Label>URL Hình ảnh</Form.Label>
-                                    <Form.Control type="text" name="image_url" value={formData.image_url} onChange={handleChange} placeholder="https://..." />
+                                <Form.Group className="mb-0">
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Hình ảnh Sản phẩm</Form.Label>
+                                    {/* Không để value ở đây */}
+                                    <Form.Control type="file" accept="image/*" onChange={handleFileChange} />
+                                    
+                                    {/* Hiển thị ảnh xem trước */}
+                                    {previewImage && (
+                                        <div className="mt-3 text-center bg-light p-2 rounded border">
+                                            <img src={previewImage} alt="Preview" style={{ maxHeight: '120px', objectFit: 'contain' }} />
+                                        </div>
+                                    )}
                                 </Form.Group>
                             </Col>
                         </Row>
                     </Modal.Body>
-                    <Modal.Footer>
-                        <Button variant="secondary" onClick={handleClose}>Hủy bỏ</Button>
-                        <Button variant="primary" type="submit">Lưu thông tin</Button>
+                    <Modal.Footer className="border-0 p-4 pt-0 gap-2">
+                        <Button variant="light" className="px-4 fw-medium border shadow-sm" onClick={handleClose}>Hủy bỏ</Button>
+                        <Button variant="success" className="px-5 fw-bold shadow-sm" type="submit">Lưu dữ liệu</Button>
                     </Modal.Footer>
                 </Form>
             </Modal>

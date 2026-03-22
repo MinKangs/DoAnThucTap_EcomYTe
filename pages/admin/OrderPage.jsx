@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Spinner, Alert, Badge, Form } from 'react-bootstrap';
+import { Table, Button, Modal, Spinner, Alert, Badge, Form, Row, Col, InputGroup } from 'react-bootstrap';
+import { BsSearch, BsFilterRight, BsEye } from 'react-icons/bs';
 import api from '../../services/api';
-import './OrderPage.css';
+import './AdminCommon.css'; // Kế thừa CSS dùng chung
 
 const OrderPage = () => {
+    // 1. GIỮ NGUYÊN STATE GỐC
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     
+    // Thêm State cho bộ lọc (không ảnh hưởng backend)
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+
     const [showModal, setShowModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
 
+    // 2. GIỮ NGUYÊN LOGIC FETCH DỮ LIỆU
     const fetchOrders = async () => {
         setLoading(true);
         try {
@@ -29,6 +36,23 @@ const OrderPage = () => {
         fetchOrders();
     }, []);
 
+    // 3. LOGIC BỘ LỌC TÍCH HỢP (Tìm kiếm + Trạng thái)
+    const isFiltering = searchTerm !== '' || filterStatus !== '';
+    const filteredOrders = orders.filter(o => {
+        const searchStr = searchTerm.toLowerCase();
+        // Tìm theo ID đơn hàng, Tên khách, hoặc Số điện thoại
+        const matchSearch = 
+            o.id.toString().includes(searchStr) ||
+            (o.full_name && o.full_name.toLowerCase().includes(searchStr)) ||
+            (o.phone && o.phone.includes(searchStr));
+            
+        const currentStatus = o.status || o.order_status;
+        const matchStatus = filterStatus === '' || currentStatus === filterStatus;
+        
+        return matchSearch && matchStatus;
+    });
+
+    // 4. GIỮ NGUYÊN CÁC HÀM XỬ LÝ
     const handleViewDetails = (order) => {
         setSelectedOrder(order);
         setShowModal(true);
@@ -45,61 +69,124 @@ const OrderPage = () => {
         try {
             const response = await api.put(`/orders/admin/${id}/status`, { status: newStatus });
             if (response.data.success) {
-                fetchOrders(); // Tải lại dữ liệu sau khi cập nhật thành công
+                fetchOrders();
             }
         } catch (err) {
             alert(err.response?.data?.message || 'Lỗi khi cập nhật trạng thái đơn hàng.');
         }
     };
 
+    // Nâng cấp giao diện Badge trạng thái
     const getStatusBadge = (status) => {
-        switch(status) {
-            case 'pending': return <Badge bg="warning" text="dark">Chờ xử lý</Badge>;
-            case 'confirmed': return <Badge bg="info">Đã xác nhận</Badge>;
-            case 'shipping': return <Badge bg="primary">Đang giao</Badge>;
-            case 'completed': return <Badge bg="success">Hoàn thành</Badge>;
-            case 'cancelled': return <Badge bg="danger">Đã hủy</Badge>;
-            default: return <Badge bg="secondary">{status}</Badge>;
-        }
+        const config = {
+            'pending': { bg: '#fff3cd', color: '#856404', text: 'Chờ xử lý' },
+            'confirmed': { bg: '#d1ecf1', color: '#0c5460', text: 'Đã xác nhận' },
+            'shipping': { bg: '#cce5ff', color: '#004085', text: 'Đang giao' },
+            'completed': { bg: '#d4edda', color: '#155724', text: 'Hoàn thành' },
+            'cancelled': { bg: '#f8d7da', color: '#721c24', text: 'Đã hủy' }
+        };
+        const s = config[status] || { bg: '#e2e8f0', color: '#475569', text: status };
+        return (
+            <span className="badge px-3 py-2 fw-medium" style={{ backgroundColor: s.bg, color: s.color, borderRadius: '8px' }}>
+                {s.text}
+            </span>
+        );
     };
 
-    if (loading) return <Spinner animation="border" variant="primary" className="m-4" />;
+    if (loading) return <div className="text-center py-5"><Spinner animation="border" variant="success" /></div>;
     if (error) return <Alert variant="danger" className="m-4">{error}</Alert>;
 
     return (
-        <div className="order-container">
-            <h3 className="mb-4 m-0">Quản lý Đơn hàng</h3>
+        <div className="admin-page-container">
+            {/* Tiêu đề trang */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 className="page-header-title m-0">Quản lý Đơn hàng</h2>
+                    <p className="text-muted small m-0 mt-1">
+                        {isFiltering 
+                            ? `Tìm thấy ${filteredOrders.length} đơn hàng phù hợp` 
+                            : `Có tất cả ${orders.length} đơn hàng trong hệ thống`}
+                    </p>
+                </div>
+            </div>
 
-            <Table responsive hover bordered className="align-middle">
-                <thead className="table-light">
+            {/* Thanh công cụ Tìm kiếm & Lọc */}
+            <div className="table-toolbar">
+                <Row className="g-3 align-items-center">
+                    <Col md={7}>
+                        <InputGroup className="shadow-sm">
+                            <Form.Control 
+                                placeholder="Tìm kiếm theo mã đơn, tên khách hoặc số điện thoại..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="border-end-0"
+                            />
+                            <Button variant="success" className="d-flex align-items-center px-3 z-0">
+                                <BsSearch size={16} />
+                            </Button>
+                        </InputGroup>
+                    </Col>
+                    <Col md={4}>
+                        <Form.Select 
+                            className="shadow-sm border-0"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="pending">Chờ xử lý</option>
+                            <option value="confirmed">Đã xác nhận</option>
+                            <option value="shipping">Đang giao hàng</option>
+                            <option value="completed">Hoàn thành</option>
+                            <option value="cancelled">Đã hủy</option>
+                        </Form.Select>
+                    </Col>
+                    <Col md={1} className="d-flex justify-content-end">
+                        <BsFilterRight size={28} className="text-secondary" title="Công cụ lọc" />
+                    </Col>
+                </Row>
+            </div>
+
+            {/* Bảng dữ liệu */}
+            <Table responsive hover className="custom-table border-0 shadow-sm">
+                <thead>
                     <tr>
-                        <th>Mã ĐH</th>
-                        <th>Khách hàng</th>
+                        <th className="ps-4">Mã ĐH</th>
+                        <th>Thông tin khách hàng</th>
                         <th>Ngày đặt</th>
                         <th>Tổng tiền</th>
                         <th>Thanh toán</th>
                         <th>Trạng thái</th>
-                        <th className="text-center">Thao tác</th>
+                        <th className="text-center pe-4">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {orders.length === 0 ? (
-                        <tr><td colSpan="7" className="text-center">Chưa có đơn hàng nào</td></tr>
+                    {filteredOrders.length === 0 ? (
+                        <tr><td colSpan="7" className="text-center py-5 text-muted">Không có đơn hàng nào khớp với điều kiện lọc</td></tr>
                     ) : (
-                        orders.map(o => (
+                        filteredOrders.map(o => (
                             <tr key={o.id}>
-                                <td><strong>#{o.id}</strong></td>
+                                <td className="ps-4">
+                                    <strong className="text-primary">#{o.id}</strong>
+                                </td>
                                 <td>
-                                    <div>{o.full_name || 'Khách vãng lai'}</div>
+                                    <div className="fw-bold text-dark">{o.full_name || 'Khách vãng lai'}</div>
                                     <small className="text-muted">{o.phone}</small>
                                 </td>
                                 <td>{new Date(o.created_at).toLocaleString('vi-VN')}</td>
                                 <td><strong className="text-danger">{Number(o.total_amount).toLocaleString('vi-VN')} đ</strong></td>
-                                <td>{o.payment_method}</td>
+                                <td>
+                                    <span className="text-uppercase small fw-bold text-secondary">{o.payment_method}</span>
+                                </td>
                                 <td>{getStatusBadge(o.status || o.order_status)}</td>
-                                <td className="text-center">
-                                    <Button variant="outline-primary" size="sm" onClick={() => handleViewDetails(o)}>
-                                        Xem & Xử lý
+                                <td className="text-center pe-4">
+                                    <Button 
+                                        variant="light" 
+                                        size="sm" 
+                                        className="text-primary shadow-sm btn-icon border" 
+                                        onClick={() => handleViewDetails(o)}
+                                        title="Xem & Xử lý"
+                                    >
+                                        <BsEye size={18} />
                                     </Button>
                                 </td>
                             </tr>
@@ -109,75 +196,86 @@ const OrderPage = () => {
             </Table>
 
             {/* Modal Chi tiết đơn hàng */}
-            <Modal show={showModal} onHide={handleClose} size="lg">
-                <Modal.Header closeButton>
-                    <Modal.Title>Chi tiết Đơn hàng #{selectedOrder?.id}</Modal.Title>
+            <Modal show={showModal} onHide={handleClose} size="lg" className="custom-modal" centered>
+                <Modal.Header closeButton className="px-4">
+                    <Modal.Title className="fw-bold fs-5">Chi tiết Đơn hàng #{selectedOrder?.id}</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>
+                <Modal.Body className="p-4">
                     {selectedOrder && (
                         <>
-                            <div className="mb-4">
-                                <h5>Thông tin giao hàng</h5>
-                                <p className="mb-1"><strong>Người nhận:</strong> {selectedOrder.full_name}</p>
-                                <p className="mb-1"><strong>Số điện thoại:</strong> {selectedOrder.phone}</p>
-                                <p className="mb-1"><strong>Địa chỉ:</strong> {selectedOrder.shipping_address}</p>
-                                <p className="mb-1"><strong>Ghi chú:</strong> {selectedOrder.notes || 'Không có'}</p>
-                            </div>
+                            <Row className="mb-4 g-4">
+                                <Col md={6}>
+                                    <div className="p-3 bg-light rounded-3 border h-100">
+                                        <h6 className="fw-bold mb-3 text-uppercase small text-muted">Thông tin giao hàng</h6>
+                                        <p className="mb-2"><strong>Người nhận:</strong> {selectedOrder.full_name}</p>
+                                        <p className="mb-2"><strong>Điện thoại:</strong> {selectedOrder.phone}</p>
+                                        <p className="mb-2"><strong>Địa chỉ:</strong> {selectedOrder.shipping_address}</p>
+                                        <p className="mb-0"><strong>Ghi chú:</strong> {selectedOrder.notes || <span className="text-muted italic">Không có</span>}</p>
+                                    </div>
+                                </Col>
+                                <Col md={6}>
+                                    <div className="p-3 bg-light rounded-3 border h-100 d-flex flex-column justify-content-center align-items-center text-center">
+                                        <h6 className="fw-bold mb-3 text-uppercase small text-muted w-100">Trạng thái hiện tại</h6>
+                                        <div className="mb-2">{getStatusBadge(selectedOrder.status || selectedOrder.order_status)}</div>
+                                        <small className="text-muted">Ngày đặt: {new Date(selectedOrder.created_at).toLocaleString('vi-VN')}</small>
+                                    </div>
+                                </Col>
+                            </Row>
 
                             <div className="mb-4">
-                                <h5>Sản phẩm đã đặt</h5>
-                                <Table size="sm" bordered>
+                                <h6 className="fw-bold mb-3 text-uppercase small text-muted">Sản phẩm đã đặt</h6>
+                                <Table hover className="align-middle border rounded-3 overflow-hidden custom-table">
                                     <thead className="table-light">
                                         <tr>
-                                            <th>Sản phẩm</th>
+                                            <th className="ps-3">Sản phẩm</th>
                                             <th className="text-center">Đơn giá</th>
-                                            <th className="text-center">Số lượng</th>
-                                            <th className="text-end">Thành tiền</th>
+                                            <th className="text-center">SL</th>
+                                            <th className="text-end pe-3">Thành tiền</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {selectedOrder.items?.map((item, index) => (
                                             <tr key={index}>
-                                                <td>
+                                                <td className="ps-3">
                                                     <div className="d-flex align-items-center">
                                                         {item.image_url ? (
-                                                            <img src={item.image_url} alt={item.product_name} className="order-item-img me-2" />
+                                                            <img src={item.image_url} alt={item.product_name} className="rounded border me-3" style={{width: '40px', height: '40px', objectFit: 'cover'}} />
                                                         ) : (
-                                                            <div className="order-item-img bg-light me-2 d-flex align-items-center justify-content-center text-muted" style={{fontSize: '8px'}}>No img</div>
+                                                            <div className="rounded border bg-white me-3 d-flex align-items-center justify-content-center text-muted" style={{width: '40px', height: '40px', fontSize: '10px'}}>N/A</div>
                                                         )}
-                                                        {item.product_name}
+                                                        <span className="fw-medium text-dark">{item.product_name}</span>
                                                     </div>
                                                 </td>
-                                                <td className="text-center align-middle">{Number(item.price).toLocaleString('vi-VN')} đ</td>
-                                                <td className="text-center align-middle">{item.quantity}</td>
-                                                <td className="text-end align-middle">{Number(item.price * item.quantity).toLocaleString('vi-VN')} đ</td>
+                                                <td className="text-center">{Number(item.price || item.price_at_purchase).toLocaleString('vi-VN')} đ</td>
+                                                <td className="text-center fw-bold text-secondary">x{item.quantity}</td>
+                                                <td className="text-end pe-3 fw-bold text-dark">{Number((item.price || item.price_at_purchase) * item.quantity).toLocaleString('vi-VN')} đ</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                     <tfoot>
-                                        <tr>
-                                            <td colSpan="3" className="text-end"><strong>Tổng cộng:</strong></td>
-                                            <td className="text-end"><strong className="text-danger">{Number(selectedOrder.total_amount).toLocaleString('vi-VN')} đ</strong></td>
+                                        <tr className="bg-light">
+                                            <td colSpan="3" className="text-end border-0 pt-3"><strong>Tổng cộng:</strong></td>
+                                            <td className="text-end pe-3 border-0 pt-3"><strong className="text-danger fs-5">{Number(selectedOrder.total_amount).toLocaleString('vi-VN')} đ</strong></td>
                                         </tr>
                                     </tfoot>
                                 </Table>
                             </div>
 
-                            <div className="border-top pt-3">
-                                <h5>Cập nhật trạng thái</h5>
+                            <div className="border-top pt-4">
+                                <h6 className="fw-bold mb-3 text-uppercase small text-muted">Cập nhật trạng thái đơn hàng</h6>
                                 <div className="d-flex gap-2 flex-wrap">
-                                    <Button variant="warning" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'pending')} disabled={selectedOrder.status === 'pending'}>Chờ xử lý</Button>
-                                    <Button variant="info" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'confirmed')} disabled={selectedOrder.status === 'confirmed'}>Xác nhận</Button>
-                                    <Button variant="primary" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'shipping')} disabled={selectedOrder.status === 'shipping'}>Giao hàng</Button>
-                                    <Button variant="success" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'completed')} disabled={selectedOrder.status === 'completed'}>Hoàn thành</Button>
-                                    <Button variant="danger" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')} disabled={selectedOrder.status === 'cancelled'}>Hủy đơn</Button>
+                                    <Button variant="outline-warning" className="fw-medium" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'pending')} disabled={selectedOrder.status === 'pending'}>Chờ xử lý</Button>
+                                    <Button variant="outline-info" className="fw-medium" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'confirmed')} disabled={selectedOrder.status === 'confirmed'}>Xác nhận</Button>
+                                    <Button variant="outline-primary" className="fw-medium" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'shipping')} disabled={selectedOrder.status === 'shipping'}>Giao hàng</Button>
+                                    <Button variant="outline-success" className="fw-medium" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'completed')} disabled={selectedOrder.status === 'completed'}>Hoàn thành</Button>
+                                    <Button variant="outline-danger" className="fw-medium" size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'cancelled')} disabled={selectedOrder.status === 'cancelled'}>Hủy đơn</Button>
                                 </div>
                             </div>
                         </>
                     )}
                 </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={handleClose}>Đóng</Button>
+                <Modal.Footer className="border-0 p-4 pt-0">
+                    <Button variant="light" className="px-4 fw-medium border shadow-sm" onClick={handleClose}>Đóng</Button>
                 </Modal.Footer>
             </Modal>
         </div>

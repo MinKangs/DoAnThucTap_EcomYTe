@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Badge, Spinner, Alert } from 'react-bootstrap';
+import { Table, Button, Modal, Form, Badge, Spinner, Alert, Row, Col, InputGroup } from 'react-bootstrap';
+import { BsSearch, BsPlusLg, BsPencilSquare, BsTrash, BsFilterRight, BsBuilding } from 'react-icons/bs';
 import api from '../../services/api';
-import './WarehousePage.css';
+import './AdminCommon.css';
 
 const WarehousePage = () => {
+    // 1. STATE GỐC
     const [warehouses, setWarehouses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     
     const [showModal, setShowModal] = useState(false);
-    const [editingId, setEditingId] = useState(null); // Lưu ID nếu đang ở chế độ sửa
+    const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         type: 'main',
@@ -17,6 +19,12 @@ const WarehousePage = () => {
         status: 'active'
     });
 
+    // Thêm State cho công cụ Tìm kiếm và Lọc
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
+
+    // 2. LOGIC FETCH DỮ LIỆU
     const fetchWarehouses = async () => {
         setLoading(true);
         try {
@@ -35,21 +43,33 @@ const WarehousePage = () => {
         fetchWarehouses();
     }, []);
 
-    // Đóng Modal và reset form
+    // 3. LOGIC BỘ LỌC TÍCH HỢP
+    const isFiltering = searchTerm !== '' || filterType !== '' || filterStatus !== '';
+    const filteredWarehouses = warehouses.filter(w => {
+        const searchStr = searchTerm.toLowerCase();
+        const matchSearch = 
+            w.name.toLowerCase().includes(searchStr) || 
+            (w.address && w.address.toLowerCase().includes(searchStr));
+            
+        const matchType = filterType === '' || w.type === filterType;
+        const matchStatus = filterStatus === '' || w.status === filterStatus;
+
+        return matchSearch && matchType && matchStatus;
+    });
+
+    // 4. CÁC HÀM XỬ LÝ SỰ KIỆN
     const handleClose = () => {
         setShowModal(false);
         setEditingId(null);
         setFormData({ name: '', type: 'main', address: '', status: 'active' });
     };
 
-    // Mở Modal cho Thêm mới
     const handleShowAdd = () => {
         setEditingId(null);
         setFormData({ name: '', type: 'main', address: '', status: 'active' });
         setShowModal(true);
     };
 
-    // Mở Modal cho Chỉnh sửa
     const handleShowEdit = (warehouse) => {
         setEditingId(warehouse.id);
         setFormData({
@@ -65,15 +85,12 @@ const WarehousePage = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    // Gộp chung xử lý Thêm và Sửa
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             if (editingId) {
-                // Chế độ sửa
                 await api.put(`/warehouses/${editingId}`, formData);
             } else {
-                // Chế độ thêm mới
                 await api.post('/warehouses', formData);
             }
             fetchWarehouses(); 
@@ -83,7 +100,6 @@ const WarehousePage = () => {
         }
     };
 
-    // Xử lý Xóa
     const handleDelete = async (id) => {
         if (window.confirm('Bạn có chắc chắn muốn xóa kho hàng này không? Dữ liệu liên quan có thể bị ảnh hưởng.')) {
             try {
@@ -97,45 +113,118 @@ const WarehousePage = () => {
         }
     };
 
-    if (loading) return <Spinner animation="border" variant="primary" className="m-4" />;
+    if (loading) return <div className="text-center py-5"><Spinner animation="border" variant="success" /></div>;
     if (error) return <Alert variant="danger" className="m-4">{error}</Alert>;
 
     return (
-        <div className="warehouse-container">
+        <div className="admin-page-container">
+            {/* Tiêu đề trang */}
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h3 className="m-0 warehouse-title">Danh sách Kho hàng</h3>
-                <Button variant="primary" onClick={handleShowAdd}>+ Thêm kho mới</Button>
+                <div>
+                    <h2 className="page-header-title m-0">Quản lý Kho hàng</h2>
+                    <p className="text-muted small m-0 mt-1">
+                        {isFiltering 
+                            ? `Tìm thấy ${filteredWarehouses.length} kết quả phù hợp` 
+                            : `Tổng cộng ${warehouses.length} cơ sở lưu trữ trong hệ thống`}
+                    </p>
+                </div>
+                <Button variant="success" className="d-flex align-items-center gap-2 px-4 shadow-sm fw-bold" onClick={handleShowAdd}>
+                    <BsPlusLg /> Thêm kho mới
+                </Button>
             </div>
 
-            <Table responsive hover bordered className="align-middle">
-                <thead className="table-light">
+            {/* Thanh công cụ Tìm kiếm & Lọc */}
+            <div className="table-toolbar">
+                <Row className="g-3 align-items-center">
+                    <Col md={5}>
+                        <InputGroup className="shadow-sm">
+                            <Form.Control 
+                                placeholder="Tìm kiếm theo tên kho hoặc địa chỉ..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="border-end-0"
+                            />
+                            <Button variant="success" className="d-flex align-items-center px-3 z-0">
+                                <BsSearch size={16} />
+                            </Button>
+                        </InputGroup>
+                    </Col>
+                    <Col md={3}>
+                        <Form.Select 
+                            className="shadow-sm border-0"
+                            value={filterType}
+                            onChange={(e) => setFilterType(e.target.value)}
+                        >
+                            <option value="">Tất cả phân loại</option>
+                            <option value="main">Kho chính</option>
+                            <option value="branch">Kho chi nhánh</option>
+                        </Form.Select>
+                    </Col>
+                    <Col md={3}>
+                        <Form.Select 
+                            className="shadow-sm border-0"
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="active">Đang hoạt động</option>
+                            <option value="inactive">Tạm ngưng</option>
+                        </Form.Select>
+                    </Col>
+                    <Col md={1} className="d-flex justify-content-end">
+                        <BsFilterRight size={28} className="text-secondary" title="Công cụ lọc" />
+                    </Col>
+                </Row>
+            </div>
+
+            {/* Bảng dữ liệu */}
+            <Table responsive hover className="custom-table border-0 shadow-sm">
+                <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Tên kho</th>
-                        <th>Loại kho</th>
-                        <th>Địa chỉ</th>
+                        <th className="ps-4">Tên cơ sở</th>
+                        <th>Phân loại</th>
+                        <th>Địa chỉ chi tiết</th>
                         <th>Trạng thái</th>
-                        <th className="text-center">Thao tác</th>
+                        <th className="text-center pe-4">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {warehouses.length === 0 ? (
-                        <tr><td colSpan="6" className="text-center">Chưa có dữ liệu</td></tr>
+                    {filteredWarehouses.length === 0 ? (
+                        <tr><td colSpan="5" className="text-center py-5 text-muted">Không tìm thấy cơ sở nào khớp với điều kiện lọc</td></tr>
                     ) : (
-                        warehouses.map(w => (
+                        filteredWarehouses.map(w => (
                             <tr key={w.id}>
-                                <td>{w.id}</td>
-                                <td><strong>{w.name}</strong></td>
-                                <td>{w.type === 'main' ? 'Kho chính' : 'Chi nhánh'}</td>
-                                <td>{w.address}</td>
+                                <td className="ps-4">
+                                    <div className="d-flex align-items-center">
+                                        <div className="bg-light rounded p-2 me-3 text-secondary border">
+                                            <BsBuilding size={20} />
+                                        </div>
+                                        <div>
+                                            <div className="fw-bold text-dark">{w.name}</div>
+                                            <small className="text-muted">Mã Kho: #{w.id}</small>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td>
-                                    <Badge bg={w.status === 'active' ? 'success' : 'secondary'}>
+                                    {w.type === 'main' 
+                                        ? <Badge bg="primary" className="fw-medium bg-opacity-75">Kho chính</Badge> 
+                                        : <Badge bg="info" className="fw-medium text-dark bg-opacity-75">Chi nhánh</Badge>}
+                                </td>
+                                <td style={{ maxWidth: '300px' }}>
+                                    <span className="text-truncate d-block" title={w.address}>{w.address || 'Chưa cập nhật'}</span>
+                                </td>
+                                <td>
+                                    <Badge bg={w.status === 'active' ? 'success' : 'secondary'} className="px-3 py-2 fw-medium">
                                         {w.status === 'active' ? 'Hoạt động' : 'Tạm ngưng'}
                                     </Badge>
                                 </td>
-                                <td className="text-center">
-                                    <Button variant="outline-info" size="sm" className="me-2" onClick={() => handleShowEdit(w)}>Sửa</Button>
-                                    <Button variant="outline-danger" size="sm" onClick={() => handleDelete(w.id)}>Xóa</Button>
+                                <td className="text-center pe-4">
+                                    <Button variant="light" size="sm" className="me-2 text-primary shadow-sm btn-icon border" onClick={() => handleShowEdit(w)}>
+                                        <BsPencilSquare size={16} />
+                                    </Button>
+                                    <Button variant="light" size="sm" className="text-danger shadow-sm btn-icon border" onClick={() => handleDelete(w.id)}>
+                                        <BsTrash size={16} />
+                                    </Button>
                                 </td>
                             </tr>
                         ))
@@ -143,38 +232,49 @@ const WarehousePage = () => {
                 </tbody>
             </Table>
 
-            <Modal show={showModal} onHide={handleClose} backdrop="static">
-                <Modal.Header closeButton>
-                    <Modal.Title>{editingId ? 'Cập nhật Kho hàng' : 'Thêm Kho hàng mới'}</Modal.Title>
+            {/* Modal Form */}
+            <Modal show={showModal} onHide={handleClose} backdrop="static" size="lg" className="custom-modal" centered>
+                <Modal.Header closeButton className="px-4">
+                    <Modal.Title className="fw-bold fs-5">{editingId ? 'Cập nhật Kho hàng' : 'Thêm Cơ sở lưu trữ mới'}</Modal.Title>
                 </Modal.Header>
                 <Form onSubmit={handleSubmit}>
-                    <Modal.Body>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Tên kho hàng <span className="text-danger">*</span></Form.Label>
-                            <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required />
-                        </Form.Group>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Phân loại</Form.Label>
-                            <Form.Select name="type" value={formData.type} onChange={handleChange}>
-                                <option value="main">Kho chính</option>
-                                <option value="branch">Kho chi nhánh</option>
-                            </Form.Select>
-                        </Form.Group>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Địa chỉ chi tiết</Form.Label>
-                            <Form.Control as="textarea" rows={2} name="address" value={formData.address} onChange={handleChange} />
-                        </Form.Group>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Trạng thái hoạt động</Form.Label>
-                            <Form.Select name="status" value={formData.status} onChange={handleChange}>
-                                <option value="active">Đang hoạt động</option>
-                                <option value="inactive">Tạm ngưng</option>
-                            </Form.Select>
-                        </Form.Group>
+                    <Modal.Body className="p-4">
+                        <Row className="g-3">
+                            <Col md={8}>
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Tên kho hàng <span className="text-danger">*</span></Form.Label>
+                                    <Form.Control type="text" name="name" value={formData.name} onChange={handleChange} required placeholder="Ví dụ: Kho Tổng Miền Nam" />
+                                </Form.Group>
+                            </Col>
+                            <Col md={4}>
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Phân loại</Form.Label>
+                                    <Form.Select name="type" value={formData.type} onChange={handleChange}>
+                                        <option value="main">Kho chính</option>
+                                        <option value="branch">Kho chi nhánh</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={12}>
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Địa chỉ chi tiết</Form.Label>
+                                    <Form.Control as="textarea" rows={2} name="address" value={formData.address} onChange={handleChange} placeholder="Nhập địa chỉ đầy đủ..." />
+                                </Form.Group>
+                            </Col>
+                            <Col md={12}>
+                                <Form.Group className="mb-0">
+                                    <Form.Label className="fw-semibold small text-muted text-uppercase mb-1">Trạng thái hoạt động</Form.Label>
+                                    <Form.Select name="status" value={formData.status} onChange={handleChange}>
+                                        <option value="active">Đang hoạt động</option>
+                                        <option value="inactive">Tạm ngưng</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                        </Row>
                     </Modal.Body>
-                    <Modal.Footer>
-                        <Button variant="secondary" onClick={handleClose}>Hủy bỏ</Button>
-                        <Button variant="primary" type="submit">Lưu thông tin</Button>
+                    <Modal.Footer className="border-0 p-4 pt-0 gap-2">
+                        <Button variant="light" className="px-4 fw-medium border shadow-sm" onClick={handleClose}>Hủy bỏ</Button>
+                        <Button variant="success" className="px-5 fw-bold shadow-sm" type="submit">Lưu dữ liệu</Button>
                     </Modal.Footer>
                 </Form>
             </Modal>

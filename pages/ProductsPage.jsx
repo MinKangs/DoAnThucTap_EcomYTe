@@ -18,39 +18,40 @@ const ProductsPage = () => {
     const categoryQuery = searchParams.get('category');
 
     useEffect(() => {
-        const fetchProducts = async () => {
-            setLoading(true);
-            try {
-                const response = await api.get('/products');
-                if (response.data.success) {
-                    let filteredProducts = response.data.data;
+    const fetchProducts = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('/products');
+            if (response.data.success) {
+                // 1. NGAY TẠI ĐÂY: Lọc bỏ những sản phẩm đã bị ẩn/xóa (chỉ lấy active)
+                let filteredProducts = response.data.data.filter(p => p.status === 'active');
 
-                    // Lọc theo từ khóa tìm kiếm
-                    if (searchQuery) {
-                        filteredProducts = filteredProducts.filter(p => 
-                            p.name.toLowerCase().includes(searchQuery.toLowerCase())
-                        );
-                    }
-
-                    // Lọc theo danh mục
-                    if (categoryQuery) {
-                        filteredProducts = filteredProducts.filter(p => 
-                            p.category_id.toString() === categoryQuery
-                        );
-                    }
-
-                    setProducts(filteredProducts);
+                // Lọc theo từ khóa tìm kiếm
+                if (searchQuery) {
+                    filteredProducts = filteredProducts.filter(p => 
+                        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+                    );
                 }
-            } catch (err) {
-                setError('Không thể tải danh sách sản phẩm từ máy chủ.');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
 
+                // Lọc theo danh mục
+                if (categoryQuery) {
+                    filteredProducts = filteredProducts.filter(p => 
+                        p.category_id.toString() === categoryQuery
+                    );
+                }
+
+                setProducts(filteredProducts);
+            }
+        } catch (err) {
+            setError('Không thể tải danh sách sản phẩm từ máy chủ.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
         fetchProducts();
-    }, [searchQuery, categoryQuery]); // Chạy lại hiệu ứng khi URL thay đổi
+    }, [searchQuery, categoryQuery]); 
 
     const handleAddToCart = (product) => {
         addToCart(product, 1);

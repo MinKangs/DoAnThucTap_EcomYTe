@@ -29,8 +29,11 @@ const HomePage = () => {
                 }
 
                 if (productRes.data.success) {
-                    // Cắt lấy 8 sản phẩm đầu tiên (mới nhất) để đưa lên Trang chủ
-                    setProducts(productRes.data.data.slice(0, 8));
+                    // 1. Lọc ra các sản phẩm đang kinh doanh (active)
+                    const activeProducts = productRes.data.data.filter(product => product.status === 'active');
+                    
+                    // 2. Cắt lấy 8 sản phẩm đầu tiên từ danh sách ĐÃ LỌC để đưa lên Trang chủ
+                    setProducts(activeProducts.slice(0, 8));
                 }
             } catch (err) {
                 console.error('Lỗi khi tải dữ liệu trang chủ:', err);
