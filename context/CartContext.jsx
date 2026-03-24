@@ -16,6 +16,7 @@ export const CartProvider = ({ children }) => {
     }, [cartItems]);
 
     // Thêm sản phẩm vào giỏ
+    // Thêm sản phẩm vào giỏ
     const addToCart = (product, quantity) => {
         setCartItems(prevItems => {
             const existingItemIndex = prevItems.findIndex(item => item.id === product.id);
@@ -23,7 +24,13 @@ export const CartProvider = ({ children }) => {
             if (existingItemIndex >= 0) {
                 // Nếu sản phẩm đã có, tăng số lượng
                 const updatedItems = [...prevItems];
-                updatedItems[existingItemIndex].quantity += quantity;
+                
+                // FIX LỖI x2: Phải clone (tạo bản sao) cả object sản phẩm ra trước khi cộng
+                updatedItems[existingItemIndex] = {
+                    ...updatedItems[existingItemIndex],
+                    quantity: updatedItems[existingItemIndex].quantity + quantity
+                };
+                
                 return updatedItems;
             } else {
                 // Nếu chưa có, thêm mới vào mảng

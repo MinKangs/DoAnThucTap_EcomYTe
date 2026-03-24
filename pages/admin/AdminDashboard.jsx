@@ -5,7 +5,7 @@ import {
     BsBoxSeam, BsGrid, BsCartCheck, BsArchive, 
     BsBoxArrowInRight, BsGeoAlt, BsTruck, 
     BsBuilding, BsPeople, BsExclamationTriangleFill,
-    BsHourglassSplit, BsXOctagonFill, BsExclamationCircleFill
+    BsHourglassSplit, BsXOctagonFill, BsExclamationCircleFill, BsChatDotsFill, BsGraphUp
 } from 'react-icons/bs';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -52,6 +52,8 @@ const AdminDashboard = () => {
         { title: 'Vị trí lưu trữ', icon: <BsGeoAlt size={48} />, path: '/admin/locations', color: 'text-teal' },
         { title: 'Danh mục', icon: <BsGrid size={48} />, path: '/admin/categories', color: 'text-warning' },
         { title: 'Nhà phân phối', icon: <BsBuilding size={48} />, path: '/admin/distributors', color: 'text-indigo' },
+        { title: 'Báo cáo doanh thu', icon: <BsGraphUp size={48} />, path: '/admin/revenue', color: 'text-primary' },
+        { title: 'Live Chat', icon: <BsChatDotsFill size={48} />, path: '/admin/chat', color: 'text-success' }
     ];
 
     if (user && user.role === 'admin') {

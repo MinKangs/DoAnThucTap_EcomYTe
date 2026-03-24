@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { Navbar, Container, Nav, Dropdown } from 'react-bootstrap';
 import { BsBoxArrowRight, BsPersonCircle, BsHouseDoor } from 'react-icons/bs';
+import AdminChatNotification from './AdminChatNotification';
 import { useAuth } from '../context/AuthContext';
 import './AdminLayout.css';
 
@@ -15,7 +16,7 @@ const AdminLayout = () => {
     };
 
     return (
-        <div className="admin-layout-wrapper">
+        <div className="admin-layout-wrapper position-relative">
             {/* Header đồng bộ màu xanh với trang khách */}
             <Navbar expand="lg" className="px-4 py-3 shadow-sm sticky-top" style={{ backgroundColor: '#198754' }}>
                 <Container fluid>
@@ -55,6 +56,9 @@ const AdminLayout = () => {
                     <Outlet />
                 </Container>
             </main>
+
+            {/* Component Thông báo tin nhắn cho Admin/Staff */}
+            <AdminChatNotification />
         </div>
     );
 };

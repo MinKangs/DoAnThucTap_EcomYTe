@@ -2,11 +2,12 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import ClientHeader from './ClientHeader';
 import ClientFooter from './ClientFooter';
+import ChatWidget from './ChatWidget'; // <-- Import thêm khung chat
 
 const ClientLayout = () => {
     return (
-        <div className="d-flex flex-column min-vh-100">
-            {/* Header màu xanh mới */}
+        <div className="d-flex flex-column min-vh-100 position-relative">
+            {/* Header */}
             <ClientHeader />
             
             {/* Phần nội dung thay đổi giữa các trang */}
@@ -14,8 +15,11 @@ const ClientLayout = () => {
                 <Outlet />
             </main>
             
-            {/* Footer mới */}
+            {/* Footer */}
             <ClientFooter />
+
+            {/* Đặt khung chat ở đây để chỉ hiển thị cho Khách hàng */}
+            <ChatWidget />
         </div>
     );
 };
