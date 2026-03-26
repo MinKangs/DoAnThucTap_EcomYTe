@@ -1,0 +1,15 @@
+.admin-layout-wrapper {
+    font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.tracking-wide {
+    letter-spacing: 1px;
+}
+
+.hover-opacity:hover {
+    opacity: 0.8;
+}
+
+.admin-main-content {
+    background-color: #f8f9fa;
+}

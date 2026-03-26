@@ -1,0 +1,50 @@
+/* Màu sắc mở rộng cho các icon */
+.text-purple { color: #6f42c1 !important; }
+.text-teal { color: #20c997 !important; }
+.text-indigo { color: #6610f2 !important; }
+
+/* Hiệu ứng hover cho thẻ Thống kê */
+.dashboard-stat-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border-radius: 12px;
+}
+
+.dashboard-stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+}
+
+/* Hiệu ứng hover cho thẻ Phân hệ quản lý */
+.dashboard-module-card {
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    background-color: #ffffff;
+}
+
+.dashboard-module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,.1) !important;
+    background-color: #f8f9fa; /* Sáng nhẹ nền khi hover */
+}
+
+/* Hiệu ứng phóng to nhẹ icon khi hover vào card */
+.transition-icon {
+    transition: transform 0.3s ease;
+}
+
+.dashboard-module-card:hover .transition-icon {
+    transform: scale(1.15);
+}
+
+/* Thêm màu tùy chỉnh cho cảnh báo */
+.bg-orange-light {
+    background-color: rgba(253, 126, 20, 0.1) !important;
+}
+
+.border-orange {
+    border-color: #fd7e14 !important;
+}
+
+.text-orange {
+    color: #fd7e14 !important;
+}

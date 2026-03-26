@@ -1,0 +1,89 @@
+/* Container chính cho mỗi trang quản lý */
+.admin-page-container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    border: 1px solid #eef2f5;
+}
+
+/* Tiêu đề trang */
+.page-header-title {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 1.65rem;
+    letter-spacing: 0;
+}
+
+/* Khu vực thanh công cụ (Tìm kiếm & Lọc) */
+.table-toolbar {
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    border: 1px solid #eef2f5;
+}
+
+/* Bo tròn tiêu chuẩn cho các Form và Button */
+.form-control, .form-select, .btn {
+    border-radius: 8px !important; 
+}
+
+/* Định dạng Bảng */
+.custom-table {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #eef2f5;
+}
+
+.custom-table thead th {
+    background-color: #f8f9fa;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6c757d;
+    padding: 16px 15px;
+    border-bottom: 2px solid #eef2f5;
+    border-top: none;
+}
+
+.custom-table tbody td {
+    padding: 16px 15px;
+    vertical-align: middle;
+    color: #495057;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+/* Định dạng nút Icon thao tác */
+.btn-icon {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+/* Hiệu ứng Modal */
+.custom-modal .modal-content {
+    border: none;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+}
+
+.custom-modal .modal-header {
+    border-bottom: 1px solid #f8f9fa;
+    padding: 20px 24px;
+}
+
+/* Thêm đường kẻ dọc giữa các cột trong bảng */
+.custom-table th, 
+.custom-table td {
+    border-right: 1px solid #eef2f5;
+}
+
+/* Ẩn đường kẻ dọc ở cột cuối cùng để giữ viền ngoài sạch sẽ */
+.custom-table th:last-child, 
+.custom-table td:last-child {
+    border-right: none;
+}

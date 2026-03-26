@@ -1,0 +1,92 @@
+.category-sidebar {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.category-item {
+    padding: 12px 20px;
+    color: #495057 !important; 
+    text-decoration: none !important; 
+    display: block;
+    transition: all 0.2s ease-in-out;
+    font-weight: 500;
+    border-radius: 6px;
+    margin: 0 8px 4px 8px;
+}
+
+.category-item:hover {
+    background-color: #e8f5e9;
+    color: #00a651 !important; 
+    padding-left: 24px; 
+}
+
+.category-icon {
+    font-size: 1.2rem;
+    margin-right: 12px;
+}
+
+.promo-banner {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.promo-banner img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.promo-banner:hover img {
+    transform: scale(1.02);
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+}
+
+/* Ẩn thanh cuộn xấu xí của danh mục */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #e0e0e0;
+    border-radius: 4px;
+}
+
+.product-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
+}
+
+.product-title {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Tùy chỉnh Banner Slider */
+.home-banner-slider {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.home-banner-img {
+    width: 100%;
+    height: 400px; /* tăng giảm chiều cao này tùy ý (ví dụ: 450px, 500px) */
+    object-fit: cover; 
+}
